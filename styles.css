@@ -497,17 +497,13 @@ html:not(.is-loading) .nav { transform: none; }
   pointer-events: none; will-change: transform;
 }
 
-/* ---------- Cursor: stays a small dot; a flower blooms above it on hover ---------- */
+/* ---------- Cursor: a dot that opens into a thin ring over anything clickable ---------- */
+.cursor { transition: width 0.18s ease-out, height 0.18s ease-out, margin 0.18s ease-out, background-color 0.18s, opacity 0.2s; }
 .cursor.is-link, .cursor.is-view {
-  width: 6px; height: 6px; margin: -3px 0 0 -3px;
-  background: #fff; mix-blend-mode: difference;
+  width: 30px; height: 30px; margin: -15px 0 0 -15px;
+  background: transparent; box-shadow: inset 0 0 0 1px #fff; mix-blend-mode: difference;
 }
-.cursor.is-view .cursor__label { opacity: 0; }
-.cursor-bloom {
-  position: fixed; left: 0; top: 0; z-index: 89; opacity: 0;
-  transform-origin: 50% 92%; pointer-events: none; will-change: transform;
-}
-.cursor-bloom .bloom__glow { filter: blur(11px) saturate(1.6); }
+.cursor.is-view .cursor__label { display: none; }
 
 /* ---------- Practice: a flower per discipline + the four steps ---------- */
 .col__bloom { position: relative; height: clamp(120px, 11vw, 170px); margin-top: clamp(28px, 3.4vw, 52px); }

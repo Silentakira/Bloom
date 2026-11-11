@@ -295,6 +295,7 @@ if (fine && !reduce) root.classList.add("has-cursor");
 addEventListener("pointermove", e => {
   if (e.pointerType !== "mouse") return;
   mouse.x = e.clientX; mouse.y = e.clientY;
+  cursor.style.transform = `translate3d(${mouse.x}px, ${mouse.y}px, 0)`; // set here, not in the frame loop, so it never trails the pointer
   if (!mouse.moved) { mouse.moved = true; Object.assign(cpos, mouse); Object.assign(ppos, mouse); cursor.classList.add("is-on"); }
   cursorState(e.target);
 });
@@ -1213,54 +1214,6 @@ function tickBees(now) {
   }
 }
 
-/* ---------- Cursor: a flower blooms over anything you can click ----------
-   A different flower each time. It grows up from the pointer so it never covers
-   what you are pointing at, and closes again when you move off. */
-const cb = { g: 0, drawn: -1, k: 0, minis: [], ready: false, was: 0, onDark: null, f: null };
-async function initCursorBloom() {
-  if (!fine || reduce) return;
-  try { cb.minis = (await Promise.all(["waterlily", "violet-lily", "dahlia", "lotus", "chrysanthemum", "magnolia"].map(getPhoto))).map(p => ({ ...p })); } catch { return; }
-  cb.el = document.createElement("div");
-  cb.el.className = "cursor-bloom";
-  cb.el.setAttribute("aria-hidden", "true");
-  cb.glow = document.createElement("canvas");
-  cb.glow.className = "bloom__glow";
-  cb.canvas = document.createElement("canvas");
-  cb.canvas.className = "bloom__ascii";
-  cb.ctx = cb.canvas.getContext("2d");
-  cb.el.append(cb.glow, cb.canvas);
-  document.body.append(cb.el);
-  cb.ready = true;
-}
-function tickCursorBloom() {
-  if (!cb.ready) return;
-  const want = cursor.classList.contains("is-link") || cursor.classList.contains("is-view") ? 1 : 0;
-  if (want && !cb.was && cb.g < 0.05) cb.k = (cb.k + 1) % cb.minis.length; // next flower for the next hover
-  cb.was = want;
-  cb.g = lerp(cb.g, want, want ? 0.09 : 0.18);
-  if (!want && cb.g < 0.01) { if (cb.g !== 0) { cb.g = 0; cb.el.style.opacity = 0; cb.drawn = -1; } return; }
-  // light characters on dark surfaces, dark on light (the project view flips the page colour)
-  const onDark = caseEl.classList.contains("is-open") && !caseEl.classList.contains("is-closing") ? !dark : root.classList.contains("is-dark");
-  const f = cb.minis[cb.k];
-  if (f !== cb.f || onDark !== cb.onDark) {
-    cb.f = f; cb.onDark = onDark; cb.drawn = -1;
-    f.ink = onDark ? "#f1f1ee" : "#0d0d0c"; f.invert = onDark;
-    f.w = 62 * Math.sqrt(f.aspect); f.h = 62 / Math.sqrt(f.aspect);
-    f.canvas = cb.canvas; f.ctx = cb.ctx;
-    cb.el.style.width = f.w.toFixed(1) + "px"; cb.el.style.height = f.h.toFixed(1) + "px";
-    cb.canvas.width = Math.round(f.w * dpr); cb.canvas.height = Math.round(f.h * dpr);
-    cb.glow.width = f.bw; cb.glow.height = f.bh;
-    cb.glow.getContext("2d").putImageData(f.crop, 0, 0);
-    buildGrid(f, clamp(Math.round(f.w / 3), 14, 30));
-  }
-  if (Math.abs(cb.g - cb.drawn) > 0.006) { cb.drawn = cb.g; drawFlower(f, cb.g > 0.985 ? 1 : cb.g); }
-  cb.el.style.opacity = 1;
-  cb.glow.style.opacity = (0.55 * cb.g * cb.g).toFixed(3);
-  const below = cpos.y < f.h + 6; // near the top edge (the nav) it opens below the pointer instead of off-screen
-  cb.el.style.transformOrigin = below ? "50% 0%" : "50% 92%";
-  cb.el.style.transform = `translate3d(${(cpos.x - f.w / 2).toFixed(1)}px, ${(below ? cpos.y + 14 : cpos.y - f.h * 0.92).toFixed(1)}px, 0) scale(${(0.35 + 0.65 * cb.g).toFixed(3)})`;
-}
-
 /* ---------- Practice: one flower per discipline ----------
    Same photo-to-ASCII flowers as the hero. Each opens when its column scrolls into view. */
 const colBlooms = [];
@@ -1338,11 +1291,8 @@ function frame(now) {
     if (mx > 0) mx -= half;
     track.style.transform = `translate3d(${mx.toFixed(1)}px, 0, 0)`;
     // cursor + preview follow with different lag
-    cpos.x = lerp(cpos.x, mouse.x, 0.18); cpos.y = lerp(cpos.y, mouse.y, 0.18);
-    cursor.style.transform = `translate3d(${cpos.x.toFixed(1)}px, ${cpos.y.toFixed(1)}px, 0)`;
   }
 
-  tickCursorBloom();
   // ink floods the page as the contact section arrives
   root.classList.toggle("is-dark", dark || contact.getBoundingClientRect().top < innerHeight * 0.55);
   requestAnimationFrame(frame);
@@ -1370,7 +1320,6 @@ function start() {
   initPlant();
   initColBlooms();
   initBouquet();
-  initCursorBloom();
   root.classList.remove("is-loading");
   $$("[data-reveal], [data-kinetic], [data-rows]").forEach(el => io.observe(el));
   requestAnimationFrame(frame);
