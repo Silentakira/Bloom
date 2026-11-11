@@ -70,7 +70,7 @@ function setTheme(next) {
   labelTheme();
   try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
   // the flowers are drawn in ink, so they are redrawn in the new ink (light flowers on dark use the inverse shading)
-  for (const f of [...flowers, plant, ...colBlooms]) {
+  for (const f of [...flowers, plant, ...colBlooms, ...bq.flowers]) {
     if (!f) continue;
     f.ink = inkNow(); f.invert = dark;
     if (!f.cols) continue;
@@ -79,6 +79,7 @@ function setTheme(next) {
     else if (f.done) { drawFlower(f, 1); f.glow.style.opacity = glowNow(); }
   }
   if (stems) drawStems(performance.now());
+  if (bq.ready) drawBqStems();
 }
 themeBtn.addEventListener("click", () => setTheme(!dark));
 labelTheme();
@@ -164,8 +165,9 @@ let z = 1, active = -1, overRows = false, infoTimer, lastPickY = -1;
 // The stage beside the list shows the active project: its poster, typed out in
 // characters first, plus the client, role and a short description.
 function setActive(i) {
-  if (i === active || !wide()) return;
+  if (i === active) return;
   active = i;
+  markBouquet();
   rows.classList.add("has-active");
   rowEls.forEach((r, j) => r.classList.toggle("is-active", j === i));
   previewItems.forEach((it, j) => it.classList.toggle("is-active", j === i));
@@ -173,12 +175,15 @@ function setActive(i) {
   develop(previewItems[i], i);
   const p = projects[i];
   stageInfo.classList.add("is-swapping");
+  st.blurb.classList.add("is-swapping");
   clearTimeout(infoTimer);
   infoTimer = setTimeout(() => {
     st.idx.textContent = `${pad(i + 1)} / ${pad(projects.length)} — ${p.kind}`;
     st.client.textContent = p.client; st.role.textContent = p.role; st.year.textContent = p.year;
     st.blurb.textContent = p.blurb;
+    st.title.textContent = p.title;
     stageInfo.classList.remove("is-swapping");
+    st.blurb.classList.remove("is-swapping");
   }, reduce ? 0 : 220);
 }
 $$(".row__btn").forEach(btn => {
@@ -611,6 +616,7 @@ function tickGarden(now) {
 /* Brushing: the cursor pushes aside any blossom it sweeps through. The push follows
    the cursor's direction and speed; the blossom then springs back and settles. */
 let pmx = mouse.x, pmy = mouse.y;
+const brushV = { x: 0, y: 0, s: 0 };
 function spring(f, cx, cy, R, mvx, mvy, speed) {
   if (f.ox === undefined) { f.ox = f.oy = f.vx = f.vy = 0; }
   const d = Math.hypot(mouse.x - (cx + f.ox), mouse.y - (cy + f.oy));
@@ -630,6 +636,7 @@ function spring(f, cx, cy, R, mvx, mvy, speed) {
 }
 function tickBrush() {
   const mvx = mouse.x - pmx, mvy = mouse.y - pmy, speed = Math.hypot(mvx, mvy);
+  brushV.x = mvx; brushV.y = mvy; brushV.s = speed; // shared with the bouquet
   pmx = mouse.x; pmy = mouse.y;
   if (reduce || !fine) return;
   if (garden && kinetics[0].visible) {
@@ -944,6 +951,193 @@ function tickScramble(now) {
   }
 }
 
+/* ---------- Work: the bouquet ----------
+   Six flowers, one per project, gathered at a knot. On entering view the stems
+   rise as one tight bundle, a bow is tied around them, the bundle loosens and
+   fans open, and the blossoms open from the middle outward.
+   ang: how far each stem leans from vertical, len: stem length, size: blossom size. */
+const BQ = [
+  { src: "magnolia",      ang: -47, len: 0.4,  size: 0.95 },
+  { src: "dahlia",        ang: -29, len: 0.55, size: 1.05 },
+  { src: "violet-lily",   ang: -10, len: 0.44, size: 1.0 },
+  { src: "waterlily",     ang: 9,   len: 0.6,  size: 1.12 },
+  { src: "chrysanthemum", ang: 28,  len: 0.42, size: 0.95 },
+  { src: "lotus",         ang: 46,  len: 0.52, size: 0.9 },
+];
+// thin filler stems topped with a scatter of small characters, like baby's breath
+const BQ_SPRIGS = [{ ang: -38, len: 0.56 }, { ang: -19, len: 0.34 }, { ang: 0, len: 0.68 }, { ang: 19, len: 0.33 }, { ang: 38, len: 0.64 }].map(s => ({
+  ...s, dots: Array.from({ length: 10 }, () => ({ x: rand(-17, 17), y: rand(-20, 10), ch: "*.o'*"[Math.floor(Math.random() * 5)] })),
+}));
+const BOW = [" .--.   .--. ", "(    \\ /    )", " '--. X .--' ", "    /   \\    ", "   /     \\   "].join("\n");
+const BQ_ORDER = [2, 3, 1, 4, 0, 5]; // blossoms open from the middle outward
+const bq = { el: $("[data-bouquet]"), flowers: [], sprigs: [], t0: Infinity, ready: false, done: false, spread: 0, grow: 0 };
+const backOut = t => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2); // eases past the target and settles
+
+function pathChars(fn, length) {
+  const pts = [], n = Math.max(2, Math.round(length / 5.2));
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, [x, y] = fn(t), [x1, y1] = fn(Math.max(0, t - 0.03)), [x2, y2] = fn(Math.min(1, t + 0.03));
+    const deg = ((Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI + 360) % 180;
+    pts.push({ x, y, ch: deg < 22.5 || deg > 157.5 ? "-" : deg < 67.5 ? "\\" : deg < 112.5 ? "|" : "/" });
+  }
+  return pts;
+}
+// spread: 0 = stems bundled straight up, 1 = fanned open. grow: 0..1 stem length.
+function layoutBouquet(spread, grow) {
+  const { W, H } = bq, T = { x: W * 0.5, y: H * 0.8 }; // T is the knot
+  const stemOf = (ang, lenRel, ox = 0, oy = 0) => {
+    const fan = clamp(W / 560, 0.6, 1); // a narrower fan on narrow screens so nothing runs off the edge
+    const th = (ang * spread * fan * Math.PI) / 180, len = lenRel * H * grow, tail = H * 0.11 * grow;
+    const tip = { x: T.x + Math.sin(th) * len + ox, y: T.y - Math.cos(th) * len + oy };
+    const c = { x: T.x + (tip.x - T.x) * 0.12, y: T.y - len * 0.55 }; // stems arrive at the knot nearly upright
+    const foot = { x: T.x - Math.sin(th) * H * 0.055, y: T.y + tail };   // and cross over below it
+    const pts = len < 6 ? [] : [
+      ...pathChars(t => { const q = 1 - t; return [q * q * tip.x + 2 * q * t * c.x + t * t * T.x, q * q * tip.y + 2 * q * t * c.y + t * t * T.y]; }, len),
+      ...pathChars(t => [lerp(T.x, foot.x, t), lerp(T.y, foot.y, t)], tail),
+    ];
+    return { th, tip, pts };
+  };
+  for (const f of bq.flowers) {
+    const s = stemOf(f.spec.ang, f.spec.len, f.ox || 0, f.oy || 0), side = f.spec.ang < 0 ? -1 : 1;
+    f.pts = s.pts; f.cx = s.tip.x; f.cy = s.tip.y - f.h * 0.12;
+    f.el.style.translate = `${(s.tip.x - f.w / 2).toFixed(1)}px ${(s.tip.y - f.h * 0.62).toFixed(1)}px`;
+    f.el.style.rotate = (((s.th * 180) / Math.PI) * 0.55 + (f.ox || 0) * 0.25).toFixed(2) + "deg";
+    f.num.style.translate = `${(s.tip.x + side * f.w * 0.46 - (side < 0 ? 14 : 0)).toFixed(1)}px ${(s.tip.y - f.h * 0.8).toFixed(1)}px`;
+  }
+  bq.sprigs = BQ_SPRIGS.map(sp => ({ ...stemOf(sp.ang, sp.len), dots: sp.dots }));
+  bq.bow.style.translate = `${T.x.toFixed(1)}px ${T.y.toFixed(1)}px`;
+  bq.spread = spread; bq.grow = grow;
+  drawBqStems();
+}
+function drawBqStems() {
+  const cx = bq.ctx;
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx.clearRect(0, 0, bq.W, bq.H);
+  cx.font = '400 8px "DM Mono", monospace';
+  cx.textAlign = "center"; cx.textBaseline = "middle";
+  cx.fillStyle = inkNow();
+  for (const sp of bq.sprigs) {
+    cx.globalAlpha = 0.34;
+    for (const p of sp.pts) cx.fillText(p.ch, p.x, p.y);
+    cx.globalAlpha = 0.8 * clamp((bq.spread - 0.5) * 2);
+    if (cx.globalAlpha > 0.02) for (const d of sp.dots) cx.fillText(d.ch, sp.tip.x + d.x, sp.tip.y + d.y);
+  }
+  for (const f of bq.flowers) { // the active project's stem stands out
+    cx.globalAlpha = active < 0 || !bq.done ? 0.62 : f.i === active ? 0.95 : 0.3;
+    for (const p of f.pts) cx.fillText(p.ch, p.x, p.y);
+  }
+}
+function markBouquet() {
+  if (!bq.ready) return;
+  bq.el.classList.toggle("has-active", active >= 0);
+  bq.flowers.forEach(f => { f.el.classList.toggle("is-active", f.i === active); f.num.classList.toggle("is-active", f.i === active); });
+  drawBqStems();
+}
+function sizeBouquet() {
+  if (!bq.stems) return;
+  bq.W = bq.el.clientWidth; bq.H = bq.el.clientHeight;
+  bq.stems.width = Math.round(bq.W * dpr); bq.stems.height = Math.round(bq.H * dpr);
+  const S = clamp(bq.W * 0.2, 78, 152);
+  for (const f of bq.flowers) {
+    const size = S * f.spec.size;
+    f.w = size * Math.sqrt(f.aspect); f.h = size / Math.sqrt(f.aspect);
+    f.el.style.width = f.w.toFixed(1) + "px"; f.el.style.height = f.h.toFixed(1) + "px";
+    buildGrid(f, clamp(Math.round(f.w / 3.4), 22, 84));
+    f.canvas.width = Math.round(f.w * dpr); f.canvas.height = Math.round(f.h * dpr);
+    if (f.done) drawFlower(f, 1);
+  }
+}
+async function initBouquet() {
+  if (!bq.el) return;
+  const photos = {};
+  try { await Promise.all(BQ.map(async s => (photos[s.src] = await getPhoto(s.src)))); } catch { return; }
+  bq.stems = document.createElement("canvas");
+  bq.stems.className = "bq__stems";
+  bq.ctx = bq.stems.getContext("2d");
+  bq.bow = document.createElement("pre");
+  bq.bow.className = "bq__bow";
+  bq.el.prepend(bq.stems);
+  BQ.forEach((spec, i) => {
+    const f = { ...photos[spec.src], spec, i, ink: inkNow(), invert: dark, done: false };
+    f.el = document.createElement("div");
+    f.el.className = "bq__flower";
+    f.el.dataset.cursor = "view";
+    const lift = document.createElement("div");
+    lift.className = "bq__lift";
+    const sway = document.createElement("div");
+    sway.className = "bloom__sway";
+    sway.style.animationDuration = rand(7, 11).toFixed(1) + "s";
+    sway.style.animationDelay = -rand(0, 8).toFixed(1) + "s";
+    f.glow = document.createElement("canvas");
+    f.glow.className = "bloom__glow";
+    f.glow.width = f.bw; f.glow.height = f.bh;
+    f.glow.getContext("2d").putImageData(f.crop, 0, 0);
+    f.canvas = document.createElement("canvas");
+    f.canvas.className = "bloom__ascii";
+    f.ctx = f.canvas.getContext("2d");
+    sway.append(f.glow, f.canvas);
+    lift.append(sway);
+    f.el.append(lift);
+    f.num = document.createElement("span");
+    f.num.className = "bq__num mono";
+    f.num.textContent = pad(i + 1);
+    f.el.addEventListener("mouseenter", () => setActive(i));
+    // with a mouse a click opens the project; on touch the first tap selects, the second opens
+    f.el.addEventListener("click", () => (!fine && active !== i ? setActive(i) : openCase(i, rowEls[i].querySelector("button"))));
+    bq.el.append(f.el, f.num);
+    bq.flowers.push(f);
+  });
+  bq.el.append(bq.bow);
+  sizeBouquet();
+  bq.ready = true;
+  if (reduce) {
+    bq.flowers.forEach(f => { f.done = true; drawFlower(f, 1); f.glow.style.opacity = glowNow(); f.el.style.scale = 1; });
+    bq.bow.textContent = BOW;
+    bq.done = true;
+    bq.el.classList.add("is-open");
+    layoutBouquet(1, 1);
+    markBouquet();
+    return;
+  }
+  layoutBouquet(0, 0);
+  new IntersectionObserver(([e], io) => {
+    if (e.isIntersecting) { bq.t0 = performance.now() + 150; io.disconnect(); }
+  }, { threshold: 0.3 }).observe(bq.el);
+}
+function tickBouquet(now) {
+  if (!bq.ready) return;
+  if (!bq.done) {
+    if (now < bq.t0) return;
+    const t = (now - bq.t0) / 1000;
+    const grow = 1 - Math.pow(1 - clamp(t / 0.9), 3);           // 1. the bundle rises
+    const shown = Math.round(clamp((t - 0.55) / 0.7) * BOW.length); // 2. the bow is tied, character by character
+    if (shown !== bq.bowShown) { bq.bowShown = shown; bq.bow.textContent = BOW.slice(0, shown); }
+    const spread = backOut(clamp((t - 0.95) / 1.6));             // 3. it loosens and fans open
+    let all = true;
+    for (const f of bq.flowers) {                                // 4. blossoms open from the middle outward
+      const p = clamp((t - 1.1 - BQ_ORDER.indexOf(f.i) * 0.17) / 2.0), g = 1 - Math.pow(1 - p, 3);
+      if (p > 0 && !f.done) {
+        drawFlower(f, p >= 1 ? 1 : g);
+        f.el.style.scale = (0.15 + 0.85 * g).toFixed(3);
+        f.glow.style.opacity = (glowNow() * g * g).toFixed(3);
+        if (p >= 1) f.done = true;
+      }
+      if (!f.done) all = false;
+    }
+    layoutBouquet(spread, grow);
+    if (all && t > 2.6) { bq.done = true; bq.el.classList.add("is-open"); layoutBouquet(1, 1); markBouquet(); } // 5. number tags appear
+    return;
+  }
+  if (reduce || !fine) return;
+  const r = bq.el.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > innerHeight) return;
+  let moved = false;
+  for (const f of bq.flowers) {
+    if (spring(f, r.left + f.cx - (f.ox || 0), r.top + f.cy - (f.oy || 0), Math.max(f.w, f.h) * 0.6, brushV.x, brushV.y, brushV.s)) moved = true;
+  }
+  if (moved) layoutBouquet(1, 1);
+}
+
 /* ---------- Practice: one flower per discipline ----------
    Same photo-to-ASCII flowers as the hero. Each opens when its column scrolls into view. */
 const colBlooms = [];
@@ -1005,6 +1199,7 @@ function frame(now) {
   tickPlant();
   tickBrush();
   tickColBlooms(now);
+  tickBouquet(now);
   pickByScroll();
 
   if (!reduce) {
@@ -1050,6 +1245,7 @@ function start() {
   initSolo();
   initPlant();
   initColBlooms();
+  initBouquet();
   root.classList.remove("is-loading");
   $$("[data-reveal], [data-kinetic], [data-rows]").forEach(el => io.observe(el));
   requestAnimationFrame(frame);
@@ -1079,5 +1275,5 @@ function start() {
   })(t0);
 })();
 
-addEventListener("resize", () => { fit(); half = 0; if (garden) { measureInk(); placeGarden(); } placeSolo(); lockWords(); });
+addEventListener("resize", () => { fit(); half = 0; if (garden) { measureInk(); placeGarden(); } placeSolo(); lockWords(); sizeBouquet(); if (bq.done) layoutBouquet(1, 1); });
 

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 
@@ -78,19 +78,24 @@
       </div>
       <div class="work__body">
         <ul class="rows" data-rows></ul>
+        <div class="bouquet" data-bouquet>
         <aside class="stage" aria-hidden="true">
           <div class="stage__poster" data-preview></div>
           <div class="stage__info">
             <p class="mono label" data-stage="idx"></p>
-            <p class="stage__blurb" data-stage="blurb"></p>
+            <p class="stage__title" data-stage="title"></p>
             <dl class="stage__meta mono">
               <dt>Client</dt><dd data-stage="client"></dd>
               <dt>Role</dt><dd data-stage="role"></dd>
               <dt>Year</dt><dd data-stage="year"></dd>
             </dl>
-            <p class="mono stage__hint">Click to open the project</p>
           </div>
         </aside>
+        <div class="bq__note" aria-hidden="true">
+          <p class="bq__blurb" data-stage="blurb"></p>
+          <p class="mono stage__hint">Pick a flower to open the project</p>
+        </div>
+        </div>
       </div>
     </section>
 
@@ -182,6 +187,6 @@
     </div>
   </div>
 
-  <script src="main.js?v=8"></script>
+  <script src="main.js?v=11"></script>
 </body>
 </html>
