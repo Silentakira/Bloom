@@ -427,6 +427,14 @@ html:not(.is-loading) .nav { transform: none; }
 .stage__meta dt { opacity: 0.5; }
 .stage__hint { opacity: 0.45; }
 
+/* ---------- Practice: ASCII drawings ---------- */
+.glyph { margin: 0; font: 400 11px/1.2 var(--mono); letter-spacing: 0; white-space: pre; color: var(--fg); opacity: 0.8; }
+.col .glyph { margin-top: clamp(28px, 3.4vw, 52px); min-height: 160px; } /* same height in every column so the headings line up */
+.practice .col h3 { margin-top: clamp(24px, 2.6vw, 40px); }
+.practice__side { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
+.practice__flow { display: grid; gap: 22px; max-width: 15rem; }
+.practice__flow p { opacity: 0.55; }
+
 @media (max-width: 760px) {
   .hero__foot { grid-template-columns: 1fr 1fr; }
   .plant { display: none; }

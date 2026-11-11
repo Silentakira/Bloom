@@ -615,11 +615,12 @@ function spring(f, cx, cy, R, mvx, mvy, speed) {
   if (f.ox === undefined) { f.ox = f.oy = f.vx = f.vy = 0; }
   const d = Math.hypot(mouse.x - (cx + f.ox), mouse.y - (cy + f.oy));
   if (mouse.moved && speed > 0.4 && d < R) {
-    const w = (1 - d / R) * 0.16; // strongest through the middle of the flower
-    f.vx += clamp(mvx, -60, 60) * w; f.vy += clamp(mvy, -60, 60) * w;
+    const w = (1 - d / R) * 0.045; // strongest through the middle of the flower; kept gentle
+    f.vx += clamp(mvx, -22, 22) * w; f.vy += clamp(mvy, -22, 22) * w;
   }
-  f.vx = (f.vx - 0.05 * f.ox) * 0.9; f.vy = (f.vy - 0.05 * f.oy) * 0.9;
-  const lim = R * 0.6;
+  // a soft, slow spring: the blossom drifts aside and floats back without snapping
+  f.vx = (f.vx - 0.014 * f.ox) * 0.93; f.vy = (f.vy - 0.014 * f.oy) * 0.93;
+  const lim = R * 0.3;
   f.ox = clamp(f.ox + f.vx, -lim, lim); f.oy = clamp(f.oy + f.vy, -lim, lim);
   const live = Math.abs(f.ox) + Math.abs(f.oy) + Math.abs(f.vx) + Math.abs(f.vy) > 0.06;
   if (!live && !f.live) return false;
@@ -638,7 +639,7 @@ function tickBrush() {
       if (!f.done || !spring(f, o.left + f.cx, o.top + f.cy, Math.max(f.w, f.h) * 0.62, mvx, mvy, speed)) continue;
       moved = true;
       f.el.style.translate = `${f.ox.toFixed(1)}px ${f.oy.toFixed(1)}px`;
-      f.el.style.rotate = (f.turn + (f.oy * f.geo.dx - f.ox * f.geo.dy) * 0.4).toFixed(2) + "deg"; // leans the way it was pushed
+      f.el.style.rotate = (f.turn + (f.oy * f.geo.dx - f.ox * f.geo.dy) * 0.22).toFixed(2) + "deg"; // leans the way it was pushed
       f.stem = stemPoints(f, f.ox, f.oy);
     }
     if (moved) drawStems(performance.now());
@@ -943,6 +944,65 @@ function tickScramble(now) {
   }
 }
 
+/* ---------- Practice: small ASCII drawings that redraw themselves ----------
+   Each drawing cycles through a few frames. Between frames only the characters
+   that differ change, each flickering through a random glyph on its way. */
+const boxed = (w, lines, corner = "+") => [corner + "-".repeat(w) + corner, ...lines.map(l => "|" + l.padEnd(w).slice(0, w) + "|"), corner + "-".repeat(w) + corner];
+const flowStep = at => ["[ brief ]", "    |", "[ sketch ]", "    |", "[ design ]", "    |", "[ deliver ]"].map((l, i) => (i === at * 2 ? l.padEnd(13) + "<--" : l));
+const ASCII_ART = {
+  poster: [
+    boxed(18, ["", "  ######", "  ######    /\\", "  ######   /  \\", "          /____\\", "", "  POSTER 01", "  ----------"]),
+    boxed(18, ["          .--.", "         (    )", "          '--'", "  ============", "  ========", "", "  POSTER 02", "  ----------"]),
+    boxed(18, ["  //////////////", "   ////////////", "    //////////", "     ////////", "      //////", "", "  POSTER 03", "  ----------"]),
+  ],
+  social: [
+    boxed(16, [" (o) akira", "----------------", "", "     .-''-.", "    (  01  )", "     '-..-'", "", "----------------", " <3  ()  >>", "     o . . ."], "."),
+    boxed(16, [" (o) akira", "----------------", "", "    +------+", "    |  02  |", "    +------+", "", "----------------", " <3  ()  >>", "     . o . ."], "."),
+    boxed(16, [" (o) akira", "----------------", "", "       /\\", "      /03\\", "     /____\\", "", "----------------", " <3  ()  >>", "     . . o ."], "."),
+  ],
+  web: [
+    boxed(20, [" o o o    index.html", "--------------------", " Hello_", "", " ----------  +----+", " -------     |    |", " -----       +----+", " [ view ]"]),
+    boxed(20, [" o o o    index.html", "--------------------", " Hello, I'm Akira_", "", " +----+  ----------", " |    |  -------", " +----+  -----", " [ view ]"]),
+    boxed(20, [" o o o    index.html", "--------------------", " Hello, I'm Akira.", "", " +--+ +--+ +--+ +--+", " |  | |  | |  | |  |", " +--+ +--+ +--+ +--+", " [ view ]"]),
+  ],
+  flow: [0, 1, 2, 3].map(flowStep),
+};
+const drawings = $$("[data-ascii]").map((el, n) => {
+  const frames = ASCII_ART[el.dataset.ascii];
+  const w = Math.max(...frames.flat().map(l => l.length)), hgt = Math.max(...frames.map(f => f.length));
+  const grid = frames.map(f => Array.from({ length: hgt }, (_, r) => (f[r] || "").padEnd(w)).join(""));
+  const d = { el, grid, w, cur: " ".repeat(w * hgt).split(""), frame: -1, pending: new Map(), next: 0, visible: false, hold: el.dataset.ascii === "flow" ? 1500 : 3000 + n * 350 };
+  d.paint = () => {
+    const rows = [];
+    for (let r = 0; r < hgt; r++) rows.push(d.cur.slice(r * w, (r + 1) * w).join(""));
+    el.textContent = rows.join("\n");
+  };
+  if (reduce) d.cur = grid[0].split("");
+  d.paint();
+  new IntersectionObserver(([e]) => (d.visible = e.isIntersecting), { threshold: 0.2 }).observe(el);
+  return d;
+});
+let drawFrame = 0;
+function tickDrawings(now) {
+  if (reduce || drawFrame++ % 3) return;
+  for (const d of drawings) {
+    if (!d.visible) continue;
+    if (!d.pending.size && now > d.next) { // start morphing to the next frame
+      d.frame = (d.frame + 1) % d.grid.length;
+      const target = d.grid[d.frame], first = d.next === 0;
+      for (let i = 0; i < target.length; i++) if (d.cur[i] !== target[i]) d.pending.set(i, now + (first ? (i / target.length) * 900 : 0) + Math.random() * 500);
+      d.next = now + d.hold;
+    }
+    if (!d.pending.size) continue;
+    const target = d.grid[d.frame];
+    for (const [i, t] of d.pending) {
+      if (now >= t) { d.cur[i] = target[i]; d.pending.delete(i); }
+      else if (t - now < 200) d.cur[i] = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+    }
+    d.paint();
+  }
+}
+
 /* ---------- Frame loop ---------- */
 const contact = $(".contact");
 function frame(now) {
@@ -959,6 +1019,7 @@ function frame(now) {
   tickSolo(now);
   tickPlant();
   tickBrush();
+  tickDrawings(now);
   pickByScroll();
 
   if (!reduce) {

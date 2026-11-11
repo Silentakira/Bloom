@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Akira Uriel — Junior Designer</title>
   <meta name="description" content="Akira Uriel is a junior designer based in Portugal, working remotely. Posters, social media and websites. Available now.">
-  <script>try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("theme-dark","is-dark")}catch(e){}</script>
+  <script>/* dark is the default; "light" is only used if the visitor chose it */var t=null;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light")document.documentElement.classList.add("theme-dark","is-dark")</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 
@@ -104,22 +104,31 @@
 
     <!-- Practice -->
     <section class="practice">
-      <p class="label mono" data-reveal>(03) Practice</p>
+      <div class="practice__side">
+        <p class="label mono" data-reveal>(03) Practice</p>
+        <div class="practice__flow" data-reveal>
+          <pre class="glyph" data-ascii="flow" aria-hidden="true"></pre>
+          <p class="mono">Every project runs the same four steps, whatever the format.</p>
+        </div>
+      </div>
       <div class="practice__grid">
         <article class="col" data-reveal>
           <span class="col__n mono">A</span>
+          <pre class="glyph" data-ascii="poster" aria-hidden="true"></pre>
           <h3>Posters</h3>
           <p>Posters for events, campaigns and releases. Type first, then image, sized for print and for screen.</p>
           <ul class="mono"><li>Event posters</li><li>Campaign series</li><li>Print &amp; digital formats</li></ul>
         </article>
         <article class="col" data-reveal style="--d:1">
           <span class="col__n mono">B</span>
+          <pre class="glyph" data-ascii="social" aria-hidden="true"></pre>
           <h3>Social media</h3>
           <p>Posts, carousels and stories built as one system, so a feed stays consistent from week to week.</p>
           <ul class="mono"><li>Post templates</li><li>Carousels &amp; stories</li><li>Campaign assets</li></ul>
         </article>
         <article class="col" data-reveal style="--d:2">
           <span class="col__n mono">C</span>
+          <pre class="glyph" data-ascii="web" aria-hidden="true"></pre>
           <h3>Websites</h3>
           <p>Layout and visual design for landing pages and small sites. Clear structure, few elements, fast to read.</p>
           <ul class="mono"><li>Landing pages</li><li>Portfolio sites</li><li>Page layouts</li></ul>
@@ -168,6 +177,6 @@
     </div>
   </div>
 
-  <script src="main.js?v=5"></script>
+  <script src="main.js?v=7"></script>
 </body>
 </html>
