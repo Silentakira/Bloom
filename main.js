@@ -70,7 +70,7 @@ function setTheme(next) {
   labelTheme();
   try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
   // the flowers are drawn in ink, so they are redrawn in the new ink (light flowers on dark use the inverse shading)
-  for (const f of [...flowers, plant]) {
+  for (const f of [...flowers, plant, ...colBlooms]) {
     if (!f) continue;
     f.ink = inkNow(); f.invert = dark;
     if (!f.cols) continue;
@@ -644,7 +644,7 @@ function tickBrush() {
     }
     if (moved) drawStems(performance.now());
   }
-  for (const f of [solo, plant]) {
+  for (const f of [solo, plant, ...colBlooms]) {
     if (!f || !f.done) continue;
     const r = f.el.getBoundingClientRect();
     if (r.bottom < 0 || r.top > innerHeight) continue;
@@ -944,62 +944,47 @@ function tickScramble(now) {
   }
 }
 
-/* ---------- Practice: small ASCII drawings that redraw themselves ----------
-   Each drawing cycles through a few frames. Between frames only the characters
-   that differ change, each flickering through a random glyph on its way. */
-const boxed = (w, lines, corner = "+") => [corner + "-".repeat(w) + corner, ...lines.map(l => "|" + l.padEnd(w).slice(0, w) + "|"), corner + "-".repeat(w) + corner];
-const flowStep = at => ["[ brief ]", "    |", "[ sketch ]", "    |", "[ design ]", "    |", "[ deliver ]"].map((l, i) => (i === at * 2 ? l.padEnd(13) + "<--" : l));
-const ASCII_ART = {
-  poster: [
-    boxed(18, ["", "  ######", "  ######    /\\", "  ######   /  \\", "          /____\\", "", "  POSTER 01", "  ----------"]),
-    boxed(18, ["          .--.", "         (    )", "          '--'", "  ============", "  ========", "", "  POSTER 02", "  ----------"]),
-    boxed(18, ["  //////////////", "   ////////////", "    //////////", "     ////////", "      //////", "", "  POSTER 03", "  ----------"]),
-  ],
-  social: [
-    boxed(16, [" (o) akira", "----------------", "", "     .-''-.", "    (  01  )", "     '-..-'", "", "----------------", " <3  ()  >>", "     o . . ."], "."),
-    boxed(16, [" (o) akira", "----------------", "", "    +------+", "    |  02  |", "    +------+", "", "----------------", " <3  ()  >>", "     . o . ."], "."),
-    boxed(16, [" (o) akira", "----------------", "", "       /\\", "      /03\\", "     /____\\", "", "----------------", " <3  ()  >>", "     . . o ."], "."),
-  ],
-  web: [
-    boxed(20, [" o o o    index.html", "--------------------", " Hello_", "", " ----------  +----+", " -------     |    |", " -----       +----+", " [ view ]"]),
-    boxed(20, [" o o o    index.html", "--------------------", " Hello, I'm Akira_", "", " +----+  ----------", " |    |  -------", " +----+  -----", " [ view ]"]),
-    boxed(20, [" o o o    index.html", "--------------------", " Hello, I'm Akira.", "", " +--+ +--+ +--+ +--+", " |  | |  | |  | |  |", " +--+ +--+ +--+ +--+", " [ view ]"]),
-  ],
-  flow: [0, 1, 2, 3].map(flowStep),
-};
-const drawings = $$("[data-ascii]").map((el, n) => {
-  const frames = ASCII_ART[el.dataset.ascii];
-  const w = Math.max(...frames.flat().map(l => l.length)), hgt = Math.max(...frames.map(f => f.length));
-  const grid = frames.map(f => Array.from({ length: hgt }, (_, r) => (f[r] || "").padEnd(w)).join(""));
-  const d = { el, grid, w, cur: " ".repeat(w * hgt).split(""), frame: -1, pending: new Map(), next: 0, visible: false, hold: el.dataset.ascii === "flow" ? 1500 : 3000 + n * 350 };
-  d.paint = () => {
-    const rows = [];
-    for (let r = 0; r < hgt; r++) rows.push(d.cur.slice(r * w, (r + 1) * w).join(""));
-    el.textContent = rows.join("\n");
-  };
-  if (reduce) d.cur = grid[0].split("");
-  d.paint();
-  new IntersectionObserver(([e]) => (d.visible = e.isIntersecting), { threshold: 0.2 }).observe(el);
-  return d;
-});
-let drawFrame = 0;
-function tickDrawings(now) {
-  if (reduce || drawFrame++ % 3) return;
-  for (const d of drawings) {
-    if (!d.visible) continue;
-    if (!d.pending.size && now > d.next) { // start morphing to the next frame
-      d.frame = (d.frame + 1) % d.grid.length;
-      const target = d.grid[d.frame], first = d.next === 0;
-      for (let i = 0; i < target.length; i++) if (d.cur[i] !== target[i]) d.pending.set(i, now + (first ? (i / target.length) * 900 : 0) + Math.random() * 500);
-      d.next = now + d.hold;
-    }
-    if (!d.pending.size) continue;
-    const target = d.grid[d.frame];
-    for (const [i, t] of d.pending) {
-      if (now >= t) { d.cur[i] = target[i]; d.pending.delete(i); }
-      else if (t - now < 200) d.cur[i] = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
-    }
-    d.paint();
+/* ---------- Practice: one flower per discipline ----------
+   Same photo-to-ASCII flowers as the hero. Each opens when its column scrolls into view. */
+const colBlooms = [];
+async function initColBlooms() {
+  for (const host of $$("[data-bloom]")) {
+    let photo;
+    try { photo = await getPhoto(host.dataset.bloom); } catch { continue; }
+    const f = { ...photo, ink: inkNow(), invert: dark, done: false, t0: Infinity };
+    f.el = document.createElement("div");
+    f.el.className = "col__flower";
+    const sway = document.createElement("div");
+    sway.className = "bloom__sway";
+    f.glow = document.createElement("canvas");
+    f.glow.className = "bloom__glow";
+    f.glow.width = f.bw; f.glow.height = f.bh;
+    f.glow.getContext("2d").putImageData(f.crop, 0, 0);
+    f.canvas = document.createElement("canvas");
+    f.canvas.className = "bloom__ascii";
+    f.ctx = f.canvas.getContext("2d");
+    sway.append(f.glow, f.canvas);
+    f.el.append(sway);
+    host.append(f.el);
+    f.h = Math.min(host.clientHeight || 150, host.clientWidth / f.aspect); f.w = f.h * f.aspect;
+    f.el.style.width = f.w.toFixed(1) + "px"; f.el.style.height = f.h.toFixed(1) + "px";
+    buildGrid(f, clamp(Math.round(f.w / 3.2), 22, 84));
+    f.canvas.width = Math.round(f.w * dpr); f.canvas.height = Math.round(f.h * dpr);
+    const n = colBlooms.push(f);
+    if (reduce) { f.done = true; drawFlower(f, 1); f.glow.style.opacity = glowNow(); f.el.style.scale = 1; continue; }
+    new IntersectionObserver(([e], io) => {
+      if (e.isIntersecting) { f.t0 = performance.now() + 150 + n * 280; io.disconnect(); }
+    }, { threshold: 0.6 }).observe(host);
+  }
+}
+function tickColBlooms(now) {
+  for (const f of colBlooms) {
+    if (f.done || now < f.t0) continue;
+    const p = clamp((now - f.t0) / 2400), g = 1 - Math.pow(1 - p, 3);
+    drawFlower(f, p >= 1 ? 1 : g);
+    f.el.style.scale = (0.4 + 0.6 * g).toFixed(3);
+    f.glow.style.opacity = (glowNow() * g * g).toFixed(3);
+    if (p >= 1) f.done = true;
   }
 }
 
@@ -1019,7 +1004,7 @@ function frame(now) {
   tickSolo(now);
   tickPlant();
   tickBrush();
-  tickDrawings(now);
+  tickColBlooms(now);
   pickByScroll();
 
   if (!reduce) {
@@ -1064,6 +1049,7 @@ function start() {
   lockWords();
   initSolo();
   initPlant();
+  initColBlooms();
   root.classList.remove("is-loading");
   $$("[data-reveal], [data-kinetic], [data-rows]").forEach(el => io.observe(el));
   requestAnimationFrame(frame);

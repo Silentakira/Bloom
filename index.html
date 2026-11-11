@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
 
@@ -106,29 +106,34 @@
     <section class="practice">
       <div class="practice__side">
         <p class="label mono" data-reveal>(03) Practice</p>
-        <div class="practice__flow" data-reveal>
-          <pre class="glyph" data-ascii="flow" aria-hidden="true"></pre>
-          <p class="mono">Every project runs the same four steps, whatever the format.</p>
+        <div class="steps mono" data-reveal>
+          <p class="steps__note">Every project, the same four steps</p>
+          <ol>
+            <li><span>01</span>Brief</li>
+            <li><span>02</span>Sketch</li>
+            <li><span>03</span>Design</li>
+            <li><span>04</span>Deliver</li>
+          </ol>
         </div>
       </div>
       <div class="practice__grid">
         <article class="col" data-reveal>
           <span class="col__n mono">A</span>
-          <pre class="glyph" data-ascii="poster" aria-hidden="true"></pre>
+          <div class="col__bloom" data-bloom="dahlia" aria-hidden="true"></div>
           <h3>Posters</h3>
           <p>Posters for events, campaigns and releases. Type first, then image, sized for print and for screen.</p>
           <ul class="mono"><li>Event posters</li><li>Campaign series</li><li>Print &amp; digital formats</li></ul>
         </article>
         <article class="col" data-reveal style="--d:1">
           <span class="col__n mono">B</span>
-          <pre class="glyph" data-ascii="social" aria-hidden="true"></pre>
+          <div class="col__bloom" data-bloom="violet-lily" aria-hidden="true"></div>
           <h3>Social media</h3>
           <p>Posts, carousels and stories built as one system, so a feed stays consistent from week to week.</p>
           <ul class="mono"><li>Post templates</li><li>Carousels &amp; stories</li><li>Campaign assets</li></ul>
         </article>
         <article class="col" data-reveal style="--d:2">
           <span class="col__n mono">C</span>
-          <pre class="glyph" data-ascii="web" aria-hidden="true"></pre>
+          <div class="col__bloom" data-bloom="magnolia" aria-hidden="true"></div>
           <h3>Websites</h3>
           <p>Layout and visual design for landing pages and small sites. Clear structure, few elements, fast to read.</p>
           <ul class="mono"><li>Landing pages</li><li>Portfolio sites</li><li>Page layouts</li></ul>
@@ -177,6 +182,6 @@
     </div>
   </div>
 
-  <script src="main.js?v=7"></script>
+  <script src="main.js?v=8"></script>
 </body>
 </html>
