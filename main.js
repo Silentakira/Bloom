@@ -1249,6 +1249,151 @@ function tickCaseFlower(now) {
   if (p >= 1) cf.done = true;
 }
 
+/* ---------- Practice: the pond ----------
+   A tilted plane in real 3D (CSS perspective) is the water surface. The water is
+   ASCII drawn on that plane, so it recedes with distance. Three water flowers
+   float on it; pointing at one lifts it toward you and brings it into focus with
+   its text, while the others fall out of focus. Ripples spread from the flowers
+   and from wherever the cursor touches the water.
+   u / v: where each flower floats (across / into the distance). */
+const POND = [
+  { src: "waterlily",   u: 0.29, v: 0.58 },
+  { src: "lotus",       u: 0.54, v: 0.3 },
+  { src: "violet-lily", u: 0.74, v: 0.55 },
+];
+const pond = { el: $("[data-pond]"), lilies: [], ripples: [], focus: -1, ready: false, visible: false, rx: 0, rz: 0, frame: 0, drawn: false, lastRip: { x: -999, y: -999 } };
+function addRipple(x, y, amp) {
+  pond.ripples.push({ x, y, amp, t0: performance.now() / 1000 });
+  if (pond.ripples.length > 16) pond.ripples.shift();
+}
+function focusLily(i) {
+  if (i === pond.focus) return;
+  pond.focus = i;
+  pond.el.classList.toggle("has-focus", i >= 0);
+  pond.lilies.forEach(f => f.el.classList.toggle("is-focus", f.i === i));
+  pond.cards.forEach((c, j) => c.classList.toggle("is-on", j === i));
+  if (i >= 0) addRipple(pond.lilies[i].wx, pond.lilies[i].wy, 1.3); // it stirs the water as it lifts
+}
+function sizePond() {
+  if (!pond.plane) return;
+  pond.W = pond.plane.offsetWidth; pond.H = pond.plane.offsetHeight;
+  pond.water.width = pond.W; pond.water.height = pond.H;
+  const S = clamp(pond.W * 0.135, 96, 200);
+  for (const f of pond.lilies) {
+    f.w = S * Math.sqrt(f.aspect); f.h = S / Math.sqrt(f.aspect);
+    f.el.style.width = f.w.toFixed(1) + "px"; f.el.style.height = f.h.toFixed(1) + "px";
+    buildGrid(f, clamp(Math.round(f.w / 3.6), 22, 84));
+    f.canvas.width = Math.round(f.w * dpr); f.canvas.height = Math.round(f.h * dpr);
+    if (f.done) drawFlower(f, 1);
+  }
+  pond.drawn = false;
+}
+async function initPond() {
+  if (!pond.el) return;
+  pond.plane = $(".pond__plane", pond.el);
+  pond.water = $(".pond__water", pond.el);
+  pond.ctx = pond.water.getContext("2d");
+  pond.cards = $$("[data-card]", pond.el);
+  const els = $$("[data-lily]", pond.el);
+  for (let i = 0; i < POND.length; i++) {
+    let photo;
+    try { photo = await getPhoto(POND[i].src); } catch { return; }
+    const f = { ...photo, spec: POND[i], i, el: els[i], ink: "#f1f1ee", invert: true, done: false, t0: Infinity, phase: i * 2.1, nextRipple: 0, wx: 0, wy: 0 };
+    f.bloom = document.createElement("span");
+    f.bloom.className = "lily__bloom";
+    f.glow = document.createElement("canvas");
+    f.glow.className = "bloom__glow";
+    f.glow.width = f.bw; f.glow.height = f.bh;
+    f.glow.getContext("2d").putImageData(f.crop, 0, 0);
+    f.canvas = document.createElement("canvas");
+    f.canvas.className = "bloom__ascii";
+    f.ctx = f.canvas.getContext("2d");
+    f.bloom.append(f.glow, f.canvas);
+    f.el.firstElementChild.append(f.bloom);
+    f.el.addEventListener("mouseenter", () => focusLily(i));
+    f.el.addEventListener("mouseleave", () => focusLily(-1));
+    f.el.addEventListener("focus", () => focusLily(i));
+    f.el.addEventListener("blur", () => focusLily(-1));
+    f.el.addEventListener("click", () => { if (!fine) focusLily(pond.focus === i ? -1 : i); }); // tap to focus on touch screens
+    pond.lilies.push(f);
+  }
+  sizePond();
+  // the cursor disturbs the water. offsetX/Y on a 3D-transformed element are already in its own flat coordinates.
+  pond.water.addEventListener("pointermove", e => {
+    if (Math.hypot(e.offsetX - pond.lastRip.x, e.offsetY - pond.lastRip.y) < 70) return;
+    pond.lastRip = { x: e.offsetX, y: e.offsetY };
+    addRipple(e.offsetX, e.offsetY, 0.75);
+  });
+  pond.water.addEventListener("click", () => focusLily(-1));
+  pond.ready = true;
+  new IntersectionObserver(([e]) => {
+    pond.visible = e.isIntersecting;
+    if (e.isIntersecting && !pond.started) { pond.started = true; pond.lilies.forEach(f => (f.t0 = performance.now() + 250 + f.i * 320)); }
+  }, { threshold: 0.12 }).observe(pond.el);
+}
+function drawWater(t) {
+  const { ctx, W, H } = pond, cw = 13, ch = 16;
+  ctx.clearRect(0, 0, W, H);
+  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#f1f1ee";
+  pond.ripples = pond.ripples.filter(r => t - r.t0 < 5.5);
+  const hw = W / 2, hh = H / 2;
+  for (let y = 0; y < H; y += ch) {
+    for (let x = 0; x < W; x += cw) {
+      const ex = (x - hw) / hw, ey = (y - hh) / hh;
+      if (ex * ex + ey * ey > 1) continue; // the pond is an ellipse
+      let v = 0.2 * Math.sin(x * 0.016 + t * 0.8 + Math.sin(y * 0.008) * 2) * Math.sin(y * 0.02 - t * 0.5); // slow swell
+      for (const r of pond.ripples) { // each ripple is a ring that widens and fades
+        const age = t - r.t0, k = (Math.hypot(x - r.x, y - r.y) - age * 120) / 32;
+        if (k * k < 12) v += r.amp * Math.exp(-k * k * 0.6) * Math.exp(-age * 0.45) * Math.cos(k * 1.9);
+      }
+      const a = Math.abs(v);
+      if (a < 0.11) continue;
+      ctx.globalAlpha = Math.min(0.95, 0.24 + a * 0.9);
+      ctx.fillText(a < 0.2 ? "." : a < 0.34 ? "-" : a < 0.52 ? "~" : a < 0.75 ? "=" : "*", x, y);
+    }
+  }
+  pond.drawn = true;
+}
+function tickPond(now) {
+  if (!pond.ready || !pond.visible) return;
+  const t = now / 1000, r = pond.el.getBoundingClientRect(), live = !reduce;
+  // the camera leans a little with the pointer, which is what sells the depth
+  const mxn = clamp((mouse.x - r.left) / r.width) - 0.5, myn = clamp((mouse.y - r.top) / r.height) - 0.5, lean = live && fine && mouse.moved;
+  pond.rx = lerp(pond.rx, lean ? -myn * 6 : 0, 0.04); pond.rz = lerp(pond.rz, lean ? -mxn * 5 : 0, 0.04);
+  pond.plane.style.setProperty("--rx", pond.rx.toFixed(2) + "deg");
+  pond.plane.style.setProperty("--rz", pond.rz.toFixed(2) + "deg");
+  for (const f of pond.lilies) {
+    if (!f.done && now >= f.t0) { // open on arrival
+      const p = reduce ? 1 : clamp((now - f.t0) / 2200), g = 1 - Math.pow(1 - p, 3);
+      drawFlower(f, p >= 1 ? 1 : g);
+      f.bloom.style.scale = (0.3 + 0.7 * g).toFixed(3);
+      f.glow.style.opacity = (0.5 * g * g).toFixed(3);
+      if (p >= 1) f.done = true;
+    }
+    // each flower drifts and bobs on the water
+    const x = (f.spec.u + (live ? Math.sin(t * 0.13 + f.phase) * 0.022 : 0)) * pond.W;
+    const y = (f.spec.v + (live ? Math.cos(t * 0.11 + f.phase) * 0.016 : 0)) * pond.H;
+    f.wx = x; f.wy = y;
+    f.el.style.transform = `translate3d(${(x - f.w / 2).toFixed(1)}px, ${(y - f.h * 0.85).toFixed(1)}px, ${(live ? Math.sin(t * 0.9 + f.phase) * 5 : 0).toFixed(1)}px) rotateZ(${(live ? Math.sin(t * 0.4 + f.phase) * 2 : 0).toFixed(2)}deg)`;
+    if (live && f.done && t > f.nextRipple) { addRipple(x, y, 1.1); f.nextRipple = t + 2.2 + rand(0, 1.2); }
+  }
+  if (pond.focus >= 0) { // the text sits beside the lifted flower
+    const card = pond.cards[pond.focus], lr = pond.lilies[pond.focus].el.firstElementChild.getBoundingClientRect();
+    const cw = card.offsetWidth, chh = card.offsetHeight;
+    let x, y;
+    if (innerWidth < 760) { x = (r.width - cw) / 2; y = r.height - chh - 18; }
+    else {
+      x = lr.left + lr.width / 2 < r.left + r.width / 2 ? lr.right - r.left + 34 : lr.left - r.left - cw - 34;
+      y = clamp(lr.top - r.top + lr.height * 0.05, 12, r.height - chh - 12);
+      x = clamp(x, 12, r.width - cw - 12);
+    }
+    card.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+  }
+  if (reduce ? !pond.drawn : pond.frame++ % 2 === 0) drawWater(t); // water at half the frame rate
+}
+
 /* ---------- Practice: one flower per discipline ----------
    Same photo-to-ASCII flowers as the hero. Each opens when its column scrolls into view. */
 const colBlooms = [];
@@ -1313,6 +1458,7 @@ function frame(now) {
   tickBouquet(now);
   tickBees(now);
   tickCaseFlower(now);
+  tickPond(now);
 
   if (!reduce) {
     // hero drifts away slower than the page
@@ -1356,6 +1502,7 @@ function start() {
   initPlant();
   initColBlooms();
   initBouquet();
+  initPond();
   root.classList.remove("is-loading");
   $$("[data-reveal], [data-kinetic], [data-rows]").forEach(el => io.observe(el));
   requestAnimationFrame(frame);
@@ -1385,5 +1532,5 @@ function start() {
   })(t0);
 })();
 
-addEventListener("resize", () => { fit(); half = 0; if (garden) { measureInk(); placeGarden(); } placeSolo(); lockWords(); sizeBouquet(); if (bq.done) layoutBouquet(1, 1); });
+addEventListener("resize", () => { fit(); half = 0; if (garden) { measureInk(); placeGarden(); } placeSolo(); lockWords(); sizeBouquet(); if (bq.done) layoutBouquet(1, 1); sizePond(); });
 

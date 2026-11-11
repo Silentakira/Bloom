@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
 
@@ -121,28 +121,34 @@
           </ol>
         </div>
       </div>
-      <div class="practice__grid">
-        <article class="col" data-reveal>
+      <div class="pond" data-pond>
+        <div class="pond__scene">
+          <div class="pond__plane">
+            <canvas class="pond__water" aria-hidden="true"></canvas>
+            <button class="lily" data-lily="0" data-cursor="link" aria-label="Posters" aria-describedby="pond-card-0"><span class="lily__tilt"></span></button>
+            <button class="lily is-far" data-lily="1" data-cursor="link" aria-label="Social media" aria-describedby="pond-card-1"><span class="lily__tilt"></span></button>
+            <button class="lily" data-lily="2" data-cursor="link" aria-label="Websites" aria-describedby="pond-card-2"><span class="lily__tilt"></span></button>
+          </div>
+        </div>
+        <article class="pond__card" id="pond-card-0" data-card="0">
           <span class="col__n mono">A</span>
-          <div class="col__bloom" data-bloom="dahlia" aria-hidden="true"></div>
           <h3>Posters</h3>
           <p>Posters for events, campaigns and releases. Type first, then image, sized for print and for screen.</p>
           <ul class="mono"><li>Event posters</li><li>Campaign series</li><li>Print &amp; digital formats</li></ul>
         </article>
-        <article class="col" data-reveal style="--d:1">
+        <article class="pond__card" id="pond-card-1" data-card="1">
           <span class="col__n mono">B</span>
-          <div class="col__bloom" data-bloom="violet-lily" aria-hidden="true"></div>
           <h3>Social media</h3>
           <p>Posts, carousels and stories built as one system, so a feed stays consistent from week to week.</p>
           <ul class="mono"><li>Post templates</li><li>Carousels &amp; stories</li><li>Campaign assets</li></ul>
         </article>
-        <article class="col" data-reveal style="--d:2">
+        <article class="pond__card" id="pond-card-2" data-card="2">
           <span class="col__n mono">C</span>
-          <div class="col__bloom" data-bloom="magnolia" aria-hidden="true"></div>
           <h3>Websites</h3>
           <p>Layout and visual design for landing pages and small sites. Clear structure, few elements, fast to read.</p>
           <ul class="mono"><li>Landing pages</li><li>Portfolio sites</li><li>Page layouts</li></ul>
         </article>
+        <p class="pond__hint mono" aria-hidden="true">Three things I do. Hover a flower.</p>
       </div>
     
 </section>
@@ -188,6 +194,6 @@
     </div>
   </div>
 
-  <script src="main.js?v=17"></script>
+  <script src="main.js?v=22"></script>
 </body>
 </html>
