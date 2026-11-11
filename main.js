@@ -1132,7 +1132,7 @@ function tickBouquet(now) {
     if (all && t > 2.6) { bq.done = true; bq.el.classList.add("is-open"); layoutBouquet(1, 1); markBouquet(); } // 5. number tags appear
     return;
   }
-  if (reduce || !fine) return;
+  if (reduce) return;
   const r = bq.el.getBoundingClientRect();
   if (r.bottom < 0 || r.top > innerHeight) return;
   let moved = false;
@@ -1140,6 +1140,125 @@ function tickBouquet(now) {
     if (spring(f, r.left + f.cx - (f.ox || 0), r.top + f.cy - (f.oy || 0), Math.max(f.w, f.h) * 0.6, brushV.x, brushV.y, brushV.s)) moved = true;
   }
   if (moved) layoutBouquet(1, 1);
+}
+
+/* ---------- Bees ----------
+   A few bees work the bouquet once it has opened. They fly from blossom to
+   blossom (the blossom nods when one lands), drift toward the flower you are
+   pointing at, and keep clear of the cursor itself. */
+const BEE = {
+  r: [[" \\/ ", "(|||>"], [" -- ", "(|||>"]],
+  l: [[" \\/ ", "<|||)"], [" -- ", "<|||)"]],
+};
+const bees = [];
+function pickBeeTarget(b, mustBeFlower) {
+  if (!mustBeFlower && Math.random() < 0.25) { // sometimes just wander
+    b.flower = null;
+    b.target = { x: rand(0.12, 0.88) * bq.W, y: rand(0.04, 0.55) * bq.H };
+  } else {
+    const free = bq.flowers.filter(f => f !== b.prev && !bees.some(o => o !== b && o.flower === f));
+    const fav = active >= 0 && Math.random() < 0.6 ? bq.flowers[active] : null; // curious about the selected flower
+    b.flower = fav && fav !== b.prev ? fav : free[Math.floor(Math.random() * free.length)] || bq.flowers[0];
+    b.off = { x: rand(-0.22, 0.22), y: rand(-0.25, 0.05) };
+  }
+  b.state = "fly";
+}
+function initBees() {
+  const n = innerWidth < 760 ? 2 : 3;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("pre");
+    el.className = "bee";
+    el.setAttribute("aria-hidden", "true");
+    bq.el.append(el);
+    const b = { el, x: i % 2 ? bq.W + 40 : -40, y: rand(0, bq.H * 0.4), vx: 0, vy: 0, phase: rand(0, 6), face: i % 2 ? "l" : "r", frame: "", prev: null, wait: performance.now() + i * 900 };
+    bees.push(b);
+    pickBeeTarget(b, true);
+  }
+}
+function tickBees(now) {
+  if (reduce || !bq.done) return;
+  if (!bees.length) initBees();
+  const r = bq.el.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > innerHeight) return;
+  const mx = mouse.x - r.left, my = mouse.y - r.top, shy = fine && mouse.moved;
+  for (const b of bees) {
+    if (now < b.wait) continue;
+    const f = b.flower;
+    const tx = f ? f.cx + b.off.x * f.w : b.target.x, ty = f ? f.cy + b.off.y * f.h : b.target.y;
+    let tilt = 0;
+    if (b.state === "land") {
+      b.x = tx; b.y = ty + Math.sin(now / 300 + b.phase) * 0.6;
+      if (now > b.until || (shy && Math.hypot(mx - b.x, my - b.y) < 34)) { b.prev = f; pickBeeTarget(b); b.vy = -1.6; }
+    } else {
+      const dx = tx - b.x, dy = ty - b.y, d = Math.hypot(dx, dy) || 1, sp = Math.min(2.4, 0.4 + d * 0.05);
+      b.vx = lerp(b.vx, (dx / d) * sp, 0.05); b.vy = lerp(b.vy, (dy / d) * sp, 0.05);
+      if (shy) {
+        const cd = Math.hypot(b.x - mx, b.y - my) || 1;
+        if (cd < 70) { b.vx += ((b.x - mx) / cd) * 0.5; b.vy += ((b.y - my) / cd) * 0.5; }
+      }
+      b.x += b.vx; b.y += b.vy + Math.sin(now / 90 + b.phase) * 0.45; // a little bob in flight
+      b.face = b.vx >= 0 ? "r" : "l";
+      tilt = clamp(b.vy * 7, -20, 20) * (b.face === "r" ? 1 : -1);
+      if (d < 7) {
+        if (f) {
+          b.state = "land"; b.until = now + rand(1600, 4200);
+          if (f.ox === undefined) f.ox = f.oy = f.vx = f.vy = 0;
+          f.vy += 1.1; f.vx += b.vx * 0.5; f.live = true; // the blossom dips under the bee
+        } else pickBeeTarget(b, true);
+      }
+    }
+    const flap = b.state === "land" ? (Math.floor(now / 400 + b.phase) % 5 === 0 ? 0 : 1) : Math.floor(now / 55) % 2;
+    if (b.face + flap !== b.frame) { b.frame = b.face + flap; b.el.textContent = BEE[b.face][flap].join("\n"); }
+    b.el.style.transform = `translate3d(${(b.x - 13).toFixed(1)}px, ${(b.y - 9).toFixed(1)}px, 0) rotate(${tilt.toFixed(1)}deg)`;
+  }
+}
+
+/* ---------- Cursor: a flower blooms over anything you can click ----------
+   A different flower each time. It grows up from the pointer so it never covers
+   what you are pointing at, and closes again when you move off. */
+const cb = { g: 0, drawn: -1, k: 0, minis: [], ready: false, was: 0, onDark: null, f: null };
+async function initCursorBloom() {
+  if (!fine || reduce) return;
+  try { cb.minis = (await Promise.all(["waterlily", "violet-lily", "dahlia", "lotus", "chrysanthemum", "magnolia"].map(getPhoto))).map(p => ({ ...p })); } catch { return; }
+  cb.el = document.createElement("div");
+  cb.el.className = "cursor-bloom";
+  cb.el.setAttribute("aria-hidden", "true");
+  cb.glow = document.createElement("canvas");
+  cb.glow.className = "bloom__glow";
+  cb.canvas = document.createElement("canvas");
+  cb.canvas.className = "bloom__ascii";
+  cb.ctx = cb.canvas.getContext("2d");
+  cb.el.append(cb.glow, cb.canvas);
+  document.body.append(cb.el);
+  cb.ready = true;
+}
+function tickCursorBloom() {
+  if (!cb.ready) return;
+  const want = cursor.classList.contains("is-link") || cursor.classList.contains("is-view") ? 1 : 0;
+  if (want && !cb.was && cb.g < 0.05) cb.k = (cb.k + 1) % cb.minis.length; // next flower for the next hover
+  cb.was = want;
+  cb.g = lerp(cb.g, want, want ? 0.09 : 0.18);
+  if (!want && cb.g < 0.01) { if (cb.g !== 0) { cb.g = 0; cb.el.style.opacity = 0; cb.drawn = -1; } return; }
+  // light characters on dark surfaces, dark on light (the project view flips the page colour)
+  const onDark = caseEl.classList.contains("is-open") && !caseEl.classList.contains("is-closing") ? !dark : root.classList.contains("is-dark");
+  const f = cb.minis[cb.k];
+  if (f !== cb.f || onDark !== cb.onDark) {
+    cb.f = f; cb.onDark = onDark; cb.drawn = -1;
+    f.ink = onDark ? "#f1f1ee" : "#0d0d0c"; f.invert = onDark;
+    f.w = 62 * Math.sqrt(f.aspect); f.h = 62 / Math.sqrt(f.aspect);
+    f.canvas = cb.canvas; f.ctx = cb.ctx;
+    cb.el.style.width = f.w.toFixed(1) + "px"; cb.el.style.height = f.h.toFixed(1) + "px";
+    cb.canvas.width = Math.round(f.w * dpr); cb.canvas.height = Math.round(f.h * dpr);
+    cb.glow.width = f.bw; cb.glow.height = f.bh;
+    cb.glow.getContext("2d").putImageData(f.crop, 0, 0);
+    buildGrid(f, clamp(Math.round(f.w / 3), 14, 30));
+  }
+  if (Math.abs(cb.g - cb.drawn) > 0.006) { cb.drawn = cb.g; drawFlower(f, cb.g > 0.985 ? 1 : cb.g); }
+  cb.el.style.opacity = 1;
+  cb.glow.style.opacity = (0.55 * cb.g * cb.g).toFixed(3);
+  const below = cpos.y < f.h + 6; // near the top edge (the nav) it opens below the pointer instead of off-screen
+  cb.el.style.transformOrigin = below ? "50% 0%" : "50% 92%";
+  cb.el.style.transform = `translate3d(${(cpos.x - f.w / 2).toFixed(1)}px, ${(below ? cpos.y + 14 : cpos.y - f.h * 0.92).toFixed(1)}px, 0) scale(${(0.35 + 0.65 * cb.g).toFixed(3)})`;
 }
 
 /* ---------- Practice: one flower per discipline ----------
@@ -1204,6 +1323,7 @@ function frame(now) {
   tickBrush();
   tickColBlooms(now);
   tickBouquet(now);
+  tickBees(now);
 
   if (!reduce) {
     // hero drifts away slower than the page
@@ -1222,6 +1342,7 @@ function frame(now) {
     cursor.style.transform = `translate3d(${cpos.x.toFixed(1)}px, ${cpos.y.toFixed(1)}px, 0)`;
   }
 
+  tickCursorBloom();
   // ink floods the page as the contact section arrives
   root.classList.toggle("is-dark", dark || contact.getBoundingClientRect().top < innerHeight * 0.55);
   requestAnimationFrame(frame);
@@ -1249,6 +1370,7 @@ function start() {
   initPlant();
   initColBlooms();
   initBouquet();
+  initCursorBloom();
   root.classList.remove("is-loading");
   $$("[data-reveal], [data-kinetic], [data-rows]").forEach(el => io.observe(el));
   requestAnimationFrame(frame);

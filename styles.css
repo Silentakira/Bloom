@@ -489,6 +489,26 @@ html:not(.is-loading) .nav { transform: none; }
   .bq__note { display: grid; position: static; width: 100%; margin-top: 18px; }
 }
 
+/* ---------- Bees ---------- */
+.bee {
+  position: absolute; left: 0; top: 0; z-index: 4; margin: 0;
+  font: 500 10px/1 var(--mono); letter-spacing: 0; white-space: pre;
+  color: color-mix(in srgb, #e3ac1f 78%, var(--fg));
+  pointer-events: none; will-change: transform;
+}
+
+/* ---------- Cursor: stays a small dot; a flower blooms above it on hover ---------- */
+.cursor.is-link, .cursor.is-view {
+  width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  background: #fff; mix-blend-mode: difference;
+}
+.cursor.is-view .cursor__label { opacity: 0; }
+.cursor-bloom {
+  position: fixed; left: 0; top: 0; z-index: 89; opacity: 0;
+  transform-origin: 50% 92%; pointer-events: none; will-change: transform;
+}
+.cursor-bloom .bloom__glow { filter: blur(11px) saturate(1.6); }
+
 /* ---------- Practice: a flower per discipline + the four steps ---------- */
 .col__bloom { position: relative; height: clamp(120px, 11vw, 170px); margin-top: clamp(28px, 3.4vw, 52px); }
 .col__flower { position: absolute; left: 0; bottom: 0; scale: 0.4; transform-origin: 50% 100%; }
