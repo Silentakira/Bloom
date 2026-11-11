@@ -986,7 +986,7 @@ function pathChars(fn, length) {
 function layoutBouquet(spread, grow) {
   const { W, H } = bq, T = { x: W * 0.5, y: H * 0.8 }; // T is the knot
   const stemOf = (ang, lenRel, ox = 0, oy = 0) => {
-    const fan = clamp(W / 560, 0.6, 1); // a narrower fan on narrow screens so nothing runs off the edge
+    const fan = clamp(W / 560, 0.6, 1.12); // a narrower fan on narrow screens so nothing runs off the edge, a little wider on big ones
     const th = (ang * spread * fan * Math.PI) / 180, len = lenRel * H * grow, tail = H * 0.11 * grow;
     const tip = { x: T.x + Math.sin(th) * len + ox, y: T.y - Math.cos(th) * len + oy };
     const c = { x: T.x + (tip.x - T.x) * 0.12, y: T.y - len * 0.55 }; // stems arrive at the knot nearly upright
@@ -1035,9 +1035,11 @@ function markBouquet() {
 }
 function sizeBouquet() {
   if (!bq.stems) return;
-  bq.W = bq.el.clientWidth; bq.H = bq.el.clientHeight;
+  // the drawing area's height comes from CSS (--bq-h), so text can sit below it on small screens
+  bq.W = bq.el.clientWidth; bq.H = parseFloat(getComputedStyle(bq.el).getPropertyValue("--bq-h")) || bq.el.clientHeight;
+  bq.stems.style.height = bq.H + "px";
   bq.stems.width = Math.round(bq.W * dpr); bq.stems.height = Math.round(bq.H * dpr);
-  const S = clamp(bq.W * 0.2, 78, 152);
+  const S = clamp(Math.min(bq.W, bq.H * 1.25) * 0.2, 78, 184);
   for (const f of bq.flowers) {
     const size = S * f.spec.size;
     f.w = size * Math.sqrt(f.aspect); f.h = size / Math.sqrt(f.aspect);
@@ -1088,6 +1090,8 @@ async function initBouquet() {
     bq.flowers.push(f);
   });
   bq.el.append(bq.bow);
+  // leaving the bouquet puts it back together: nothing selected, nothing dimmed
+  if (fine) bq.el.addEventListener("mouseleave", () => { active = -1; rowEls.forEach(r => r.classList.remove("is-active")); markBouquet(); });
   sizeBouquet();
   bq.ready = true;
   if (reduce) {
@@ -1200,7 +1204,6 @@ function frame(now) {
   tickBrush();
   tickColBlooms(now);
   tickBouquet(now);
-  pickByScroll();
 
   if (!reduce) {
     // hero drifts away slower than the page

@@ -464,6 +464,31 @@ html:not(.is-loading) .nav { transform: none; }
   .bq__note, .bouquet .stage { display: none; }
 }
 
+/* ---------- Work: bouquet only ----------
+   The project list is kept for keyboards and screen readers but not shown;
+   the bouquet is the whole section. */
+.work .rows {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.work__body { display: block; }
+.bouquet {
+  --bq-h: min(88vh, 840px);
+  position: relative; top: auto; height: var(--bq-h);
+  max-width: 1240px; margin: 0 auto;
+}
+.bq__stems { inset: 0 0 auto 0; }
+.bouquet .stage, .bq__blurb { transition: opacity 0.5s; }
+.bouquet:not(.has-active) .stage, .bouquet:not(.has-active) .bq__blurb { opacity: 0; }
+.bouquet .stage { width: min(34%, 340px); grid-template-columns: clamp(84px, 8vw, 124px) minmax(0, 1fr); }
+.bq__note { width: min(28%, 290px); }
+@media (max-width: 760px) {
+  /* drawing area on top, the selected project's card and description underneath */
+  .bouquet { --bq-h: 430px; height: auto; padding-top: 430px; order: 0; margin-bottom: 0; }
+  .bouquet .stage { display: grid; position: static; width: 100%; grid-template-columns: 84px minmax(0, 1fr); margin-top: 8px; min-height: 112px; }
+  .bq__note { display: grid; position: static; width: 100%; margin-top: 18px; }
+}
+
 /* ---------- Practice: a flower per discipline + the four steps ---------- */
 .col__bloom { position: relative; height: clamp(120px, 11vw, 170px); margin-top: clamp(28px, 3.4vw, 52px); }
 .col__flower { position: absolute; left: 0; bottom: 0; scale: 0.4; transform-origin: 50% 100%; }
