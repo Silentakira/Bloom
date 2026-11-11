@@ -479,6 +479,19 @@ function drawFlower(f, g) {
   }
 }
 let stems, stemCtx;
+// characters along a stem's curve; ox/oy move the tip when the blossom is pushed aside
+function stemPoints(f, ox, oy) {
+  const { ax, ay, dx, dy, len } = f.geo, tx = f.geo.tx + ox, ty = f.geo.ty + oy, mx = f.geo.mx + ox * 0.45, my = f.geo.my + oy * 0.45;
+  const pts = [], n = Math.max(3, Math.round(len / 5.2));
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, q = 1 - t;
+    const x = q * q * ax + 2 * q * t * mx + t * t * tx, y = q * q * ay + 2 * q * t * my + t * t * ty;
+    const deg = ((Math.atan2(2 * q * (my - ay) + 2 * t * (ty - my), 2 * q * (mx - ax) + 2 * t * (tx - mx)) * 180) / Math.PI + 360) % 180;
+    pts.push({ x, y, ch: deg < 22.5 || deg > 157.5 ? "-" : deg < 67.5 ? "\\" : deg < 112.5 ? "|" : "/" });
+    if (i > 2 && i < n - 2 && i % 5 === 0) pts.push({ x: x - dy * 5 * (i % 2 ? 1 : -1), y: y + dx * 5 * (i % 2 ? 1 : -1), ch: "~" }); // a leaf
+  }
+  return pts;
+}
 function placeGarden(redraw) {
   if (!garden) return;
   const o = heroInner.getBoundingClientRect(), box = nameBox();
@@ -498,18 +511,12 @@ function placeGarden(redraw) {
     const tx = ax + dx * len, ty = ay + dy * len;
     const mx = (ax + tx) / 2 - dy * s.bend * len * 0.35, my = (ay + ty) / 2 + dx * s.bend * len * 0.35;
     f.ax = ax;
-    f.stem = [];
-    const n = Math.max(3, Math.round(len / 5.2));
-    for (let i = 0; i <= n; i++) {
-      const t = i / n, q = 1 - t;
-      const x = q * q * ax + 2 * q * t * mx + t * t * tx, y = q * q * ay + 2 * q * t * my + t * t * ty;
-      const deg = ((Math.atan2(2 * q * (my - ay) + 2 * t * (ty - my), 2 * q * (mx - ax) + 2 * t * (tx - mx)) * 180) / Math.PI + 360) % 180;
-      f.stem.push({ x, y, ch: deg < 22.5 || deg > 157.5 ? "-" : deg < 67.5 ? "\\" : deg < 112.5 ? "|" : "/" });
-      if (i > 2 && i < n - 2 && i % 5 === 0) f.stem.push({ x: x - dy * 5 * (i % 2 ? 1 : -1), y: y + dx * 5 * (i % 2 ? 1 : -1), ch: "~" }); // a leaf
-    }
+    f.geo = { ax, ay, mx, my, tx, ty, dx, dy, len };
+    f.stem = stemPoints(f, f.ox || 0, f.oy || 0);
     f.w = size * Math.sqrt(f.aspect); f.h = size / Math.sqrt(f.aspect);
     const cx = tx + dx * size * 0.26, cy = ty + dy * size * 0.26; // blossom sits on the stem tip
     const left = cx - f.w / 2, top = cy - f.h / 2;
+    f.cx = cx; f.cy = cy;
     f.turn = ((ang * 180) / Math.PI + 90) * 0.85 + s.bend * 10; // faces away from the letter
     Object.assign(f.el.style, { left: left.toFixed(1) + "px", top: top.toFixed(1) + "px", width: f.w.toFixed(1) + "px", height: f.h.toFixed(1) + "px" });
     f.el.style.transformOrigin = f.sway.style.transformOrigin = `${(tx - left).toFixed(1)}px ${(ty - top).toFixed(1)}px`;
@@ -599,6 +606,52 @@ function tickGarden(now) {
     if (p >= 1) f.done = true;
   }
   if (growing && stems) drawStems(now);
+}
+
+/* Brushing: the cursor pushes aside any blossom it sweeps through. The push follows
+   the cursor's direction and speed; the blossom then springs back and settles. */
+let pmx = mouse.x, pmy = mouse.y;
+function spring(f, cx, cy, R, mvx, mvy, speed) {
+  if (f.ox === undefined) { f.ox = f.oy = f.vx = f.vy = 0; }
+  const d = Math.hypot(mouse.x - (cx + f.ox), mouse.y - (cy + f.oy));
+  if (mouse.moved && speed > 0.4 && d < R) {
+    const w = (1 - d / R) * 0.16; // strongest through the middle of the flower
+    f.vx += clamp(mvx, -60, 60) * w; f.vy += clamp(mvy, -60, 60) * w;
+  }
+  f.vx = (f.vx - 0.05 * f.ox) * 0.9; f.vy = (f.vy - 0.05 * f.oy) * 0.9;
+  const lim = R * 0.6;
+  f.ox = clamp(f.ox + f.vx, -lim, lim); f.oy = clamp(f.oy + f.vy, -lim, lim);
+  const live = Math.abs(f.ox) + Math.abs(f.oy) + Math.abs(f.vx) + Math.abs(f.vy) > 0.06;
+  if (!live && !f.live) return false;
+  if (!live) f.ox = f.oy = f.vx = f.vy = 0;
+  f.live = live;
+  return true;
+}
+function tickBrush() {
+  const mvx = mouse.x - pmx, mvy = mouse.y - pmy, speed = Math.hypot(mvx, mvy);
+  pmx = mouse.x; pmy = mouse.y;
+  if (reduce || !fine) return;
+  if (garden && kinetics[0].visible) {
+    const o = heroInner.getBoundingClientRect();
+    let moved = false;
+    for (const f of flowers) {
+      if (!f.done || !spring(f, o.left + f.cx, o.top + f.cy, Math.max(f.w, f.h) * 0.62, mvx, mvy, speed)) continue;
+      moved = true;
+      f.el.style.translate = `${f.ox.toFixed(1)}px ${f.oy.toFixed(1)}px`;
+      f.el.style.rotate = (f.turn + (f.oy * f.geo.dx - f.ox * f.geo.dy) * 0.4).toFixed(2) + "deg"; // leans the way it was pushed
+      f.stem = stemPoints(f, f.ox, f.oy);
+    }
+    if (moved) drawStems(performance.now());
+  }
+  for (const f of [solo, plant]) {
+    if (!f || !f.done) continue;
+    const r = f.el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight) continue;
+    if (f.ox === undefined) f.ox = f.oy = f.vx = f.vy = 0;
+    if (!spring(f, (r.left + r.right) / 2 - f.ox, (r.top + r.bottom) / 2 - f.oy, Math.max(r.width, r.height) * 0.55, mvx, mvy, speed)) continue;
+    f.el.style.translate = `${(f.ox * 0.6).toFixed(1)}px ${(f.oy * 0.6).toFixed(1)}px`;
+    f.el.style.rotate = (f.ox * (f === solo ? 0.08 : 0.3)).toFixed(2) + "deg";
+  }
 }
 
 /* Frogs */
@@ -905,6 +958,7 @@ function frame(now) {
   tickDevelop(now);
   tickSolo(now);
   tickPlant();
+  tickBrush();
   pickByScroll();
 
   if (!reduce) {
