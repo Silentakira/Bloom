@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Akira Uriel — Junior Designer</title>
   <meta name="description" content="Akira Uriel is a junior designer based in Portugal, working remotely. Posters, social media and websites. Available now.">
+  <script>try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("theme-dark","is-dark")}catch(e){}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 
@@ -29,6 +30,7 @@
       <a class="roll" href="#work" data-t="Work"><span>Work</span></a>
       <a class="roll" href="#about" data-t="About"><span>About</span></a>
       <a class="roll" href="#contact" data-t="Contact"><span>Contact</span></a>
+      <button class="roll nav__theme" data-theme-toggle data-t="Dark" aria-label="Switch between light and dark theme"><span>Dark</span></button>
     </nav>
   </header>
 
@@ -42,8 +44,8 @@
           <span class="line"><span class="line__inner">Uriel</span></span>
         </h1>
         <div class="hero__foot mono">
-          <p data-reveal>Junior designer<br>Posters, social media &amp; websites</p>
-          <p data-reveal style="--d:1"><i class="dot"></i>Available now<br>Portugal, working remotely</p>
+          <p data-reveal>Junior designer from Portugal</p>
+          <p data-reveal style="--d:1">Posters, social media &amp; websites</p>
           <p data-reveal style="--d:2" class="hero__scroll">Scroll <span class="arrow">↓</span></p>
         </div>
       </div>
@@ -51,9 +53,22 @@
 
     <!-- Statement -->
     <section class="statement" id="about">
-      <p class="label mono" data-reveal>(01) About</p>
-      <p class="statement__text" data-scrub>Junior designer based in Portugal, working remotely. I make posters, social media content and websites. One year of practice so far, six months of it as an intern at Boutik Studio. Available now for freelance projects, internships and studio roles.</p>
-    </section>
+      <div class="statement__side">
+        <p class="label mono" data-reveal>(01) About</p>
+        <div class="plant" data-plant aria-hidden="true"></div>
+      </div>
+      <div class="statement__main">
+        <p class="statement__text" data-scrub>Junior designer from Portugal. I make posters, social media content and websites, and I work remotely with studios and clients anywhere.</p>
+        <dl class="facts mono" data-reveal>
+          <div><dt>Experience</dt><dd>1 year</dd></div>
+          <div><dt>Internship</dt><dd>Boutik Studio, 6 months</dd></div>
+          <div><dt>Studied</dt><dd>Multimedia design</dd></div>
+          <div><dt>Location</dt><dd>Portugal, remote</dd></div>
+          <div><dt>Open to</dt><dd>Freelance projects, internships, studio roles</dd></div>
+        </dl>
+      </div>
+    
+</section>
 
     <!-- Work -->
     <section class="work" id="work">
@@ -61,7 +76,22 @@
         <p class="label" data-reveal>(02) Selected work</p>
         <p class="label" data-reveal style="--d:1">2023 — 2026</p>
       </div>
-      <ul class="rows" data-rows></ul>
+      <div class="work__body">
+        <ul class="rows" data-rows></ul>
+        <aside class="stage" aria-hidden="true">
+          <div class="stage__poster" data-preview></div>
+          <div class="stage__info">
+            <p class="mono label" data-stage="idx"></p>
+            <p class="stage__blurb" data-stage="blurb"></p>
+            <dl class="stage__meta mono">
+              <dt>Client</dt><dd data-stage="client"></dd>
+              <dt>Role</dt><dd data-stage="role"></dd>
+              <dt>Year</dt><dd data-stage="year"></dd>
+            </dl>
+            <p class="mono stage__hint">Click to open the project</p>
+          </div>
+        </aside>
+      </div>
     </section>
 
     <!-- Marquee -->
@@ -100,7 +130,7 @@
 
     <!-- Contact -->
     <footer class="contact" id="contact">
-      <p class="label mono" data-reveal>(04) Contact — Available now</p>
+      <p class="label mono" data-reveal>(04) Contact</p>
       <a class="display contact__title" href="mailto:silencedakira@gmail.com" data-kinetic data-cursor="link" aria-label="Let's talk">
         <span class="line"><span class="line__inner">Let’s talk</span></span>
       </a>
@@ -116,9 +146,6 @@
       <p class="contact__legal mono">© 2026 Akira Uriel. Set in Bricolage Grotesque &amp; DM Mono.</p>
     </footer>
   </main>
-
-  <!-- Floating work preview -->
-  <div class="preview" aria-hidden="true"><div class="preview__inner" data-preview></div></div>
 
   <!-- Case overlay -->
   <div class="case" tabindex="-1" role="dialog" aria-modal="true" aria-label="Project" hidden>
@@ -141,6 +168,6 @@
     </div>
   </div>
 
-  <script src="main.js"></script>
+  <script src="main.js?v=4"></script>
 </body>
 </html>

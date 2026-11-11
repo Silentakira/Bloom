@@ -55,6 +55,34 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const mouse = { x: innerWidth / 2, y: innerHeight / 2, moved: false };
 const pad = n => String(n).padStart(2, "0");
 
+/* ---------- Theme ---------- */
+const themeBtn = $("[data-theme-toggle]");
+let dark = root.classList.contains("theme-dark");
+const inkNow = () => (dark ? "#f1f1ee" : "#0d0d0c");
+const glowNow = () => (dark ? 0.44 : 0.3);
+function labelTheme() {
+  themeBtn.dataset.t = themeBtn.firstElementChild.textContent = dark ? "Light" : "Dark";
+  themeBtn.setAttribute("aria-pressed", dark);
+}
+function setTheme(next) {
+  dark = next;
+  root.classList.toggle("theme-dark", dark);
+  labelTheme();
+  try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
+  // the flowers are drawn in ink, so they are redrawn in the new ink (light flowers on dark use the inverse shading)
+  for (const f of [...flowers, plant]) {
+    if (!f) continue;
+    f.ink = inkNow(); f.invert = dark;
+    if (!f.cols) continue;
+    buildGrid(f, f.cols);
+    if (f === plant) f.g = -1;
+    else if (f.done) { drawFlower(f, 1); f.glow.style.opacity = glowNow(); }
+  }
+  if (stems) drawStems(performance.now());
+}
+themeBtn.addEventListener("click", () => setTheme(!dark));
+labelTheme();
+
 /* ---------- Kinetic display type ---------- */
 // Split into letters; each letter gains a little weight as the cursor nears it.
 const kinetics = $$("[data-kinetic]").map(el => {
@@ -114,8 +142,9 @@ function tickKinetic(now) {
 
 /* ---------- Work list, preview, case overlay ---------- */
 const rows = $("[data-rows]");
-const previewEl = $(".preview");
-const previewInner = $("[data-preview]");
+const stagePoster = $("[data-preview]");
+const stageInfo = $(".stage__info");
+const st = Object.fromEntries($$("[data-stage]").map(el => [el.dataset.stage, el]));
 rows.innerHTML = projects.map((p, i) => `
   <li class="row" style="--i:${i}">
     <button class="row__btn" data-i="${i}" data-cursor="view" aria-label="${p.title}, ${p.kind}, ${p.year}">
@@ -126,21 +155,52 @@ rows.innerHTML = projects.map((p, i) => `
       <span class="row__thumb">${p.poster}</span>
     </button>
   </li>`).join("");
-previewInner.innerHTML = projects.map(p => `<div class="preview__item">${p.poster}</div>`).join("");
+stagePoster.innerHTML = projects.map(p => `<div class="preview__item">${p.poster}</div>`).join("");
 const previewItems = $$(".preview__item");
-let z = 1;
+const rowEls = $$(".row");
+const wide = () => innerWidth >= 760;
+let z = 1, active = -1, overRows = false, infoTimer, lastPickY = -1;
 
+// The stage beside the list shows the active project: its poster, typed out in
+// characters first, plus the client, role and a short description.
+function setActive(i) {
+  if (i === active || !wide()) return;
+  active = i;
+  rows.classList.add("has-active");
+  rowEls.forEach((r, j) => r.classList.toggle("is-active", j === i));
+  previewItems.forEach((it, j) => it.classList.toggle("is-active", j === i));
+  previewItems[i].style.zIndex = ++z;
+  develop(previewItems[i], i);
+  const p = projects[i];
+  stageInfo.classList.add("is-swapping");
+  clearTimeout(infoTimer);
+  infoTimer = setTimeout(() => {
+    st.idx.textContent = `${pad(i + 1)} / ${pad(projects.length)} — ${p.kind}`;
+    st.client.textContent = p.client; st.role.textContent = p.role; st.year.textContent = p.year;
+    st.blurb.textContent = p.blurb;
+    stageInfo.classList.remove("is-swapping");
+  }, reduce ? 0 : 220);
+}
 $$(".row__btn").forEach(btn => {
   const i = +btn.dataset.i;
-  btn.addEventListener("mouseenter", () => {
-    previewItems.forEach((it, j) => it.classList.toggle("is-active", j === i));
-    previewItems[i].style.zIndex = ++z;
-    develop(previewItems[i], i);
-    previewEl.classList.add("is-on");
-  });
+  btn.addEventListener("mouseenter", () => setActive(i));
+  btn.addEventListener("focus", () => setActive(i));
   btn.addEventListener("click", () => openCase(i, btn));
 });
-rows.addEventListener("mouseleave", () => previewEl.classList.remove("is-on"));
+rows.addEventListener("mouseenter", () => (overRows = true));
+rows.addEventListener("mouseleave", () => (overRows = false));
+// with no hover, the project nearest the reading line is the active one
+function pickByScroll() {
+  if (overRows || !wide() || scrollY === lastPickY) return;
+  lastPickY = scrollY;
+  const line = innerHeight * 0.42;
+  let best = -1, dist = Infinity;
+  rowEls.forEach((r, i) => {
+    const b = r.getBoundingClientRect(), d = Math.abs((b.top + b.bottom) / 2 - line);
+    if (d < dist) { dist = d; best = i; }
+  });
+  if (best >= 0) setActive(best);
+}
 
 const caseEl = $(".case");
 const cs = Object.fromEntries($$("[data-case]").map(el => [el.dataset.case, el]));
@@ -168,7 +228,6 @@ function openCase(i, from) {
   void caseEl.offsetWidth; // commit start state so the wipe animates
   caseEl.classList.add("is-open");
   root.classList.add("is-locked");
-  previewEl.classList.remove("is-on");
   caseEl.focus({ preventScroll: true });
   cursorState();
 }
@@ -215,6 +274,7 @@ let litCount = -1;
 function tickScrub() {
   const r = scrub.getBoundingClientRect();
   const p = clamp((innerHeight * 0.82 - r.top) / (r.height + innerHeight * 0.3));
+  scrubP = p;
   const lit = Math.round(p * words.length);
   if (lit === litCount) return;
   if (!reduce && litCount >= 0) for (let i = litCount; i < lit; i++) scrambling.set(words[i], performance.now() + (i - litCount) * 45);
@@ -239,7 +299,6 @@ function cursorState(target = document.elementFromPoint(mouse.x, mouse.y)) {
   const view = t?.dataset.cursor === "view";
   cursor.classList.toggle("is-view", !!view);
   cursor.classList.toggle("is-link", !!t && !view);
-  if (!view) previewEl.classList.remove("is-on");
 }
 addEventListener("scroll", () => mouse.moved && cursorState(), { passive: true });
 document.addEventListener("mouseleave", () => cursor.classList.remove("is-on"));
@@ -469,7 +528,7 @@ function drawStems(now) {
   stemCtx.clearRect(0, 0, stems.width, stems.height);
   stemCtx.font = '400 8px "DM Mono", monospace';
   stemCtx.textAlign = "center"; stemCtx.textBaseline = "middle";
-  stemCtx.fillStyle = "#0d0d0c"; stemCtx.globalAlpha = 0.62;
+  stemCtx.fillStyle = inkNow(); stemCtx.globalAlpha = 0.62;
   for (const f of flowers) {
     const p = f.done ? 1 : clamp((now - f.t0) / f.stemDur);
     const n = Math.floor((1 - Math.pow(1 - p, 2)) * f.stem.length);
@@ -495,7 +554,7 @@ async function initGarden() {
   garden.append(stems);
   const specs = innerWidth < 760 ? FLOWERS.filter(s => s.v === undefined).filter((_, i) => i % 2 === 0) : FLOWERS; // fewer on small screens, none out of the sides
   specs.forEach(spec => {
-    const f = { ...photos[spec.src], spec, done: false };
+    const f = { ...photos[spec.src], spec, done: false, ink: inkNow(), invert: dark };
     f.el = document.createElement("div");
     f.el.className = "bloom";
     f.sway = document.createElement("div");
@@ -521,7 +580,7 @@ async function initGarden() {
   flowers.forEach(f => {
     f.t0 = now + (Math.abs(f.ax - (box.left + box.width / 2)) / box.width) * 1500 + rand(0, 250);
     f.stemDur = 500 + f.spec.stem * 700;
-    if (reduce) { f.done = true; drawFlower(f, 1); f.glow.style.opacity = 0.3; f.el.style.scale = 1; f.el.style.rotate = f.turn.toFixed(2) + "deg"; }
+    if (reduce) { f.done = true; drawFlower(f, 1); f.glow.style.opacity = glowNow(); f.el.style.scale = 1; f.el.style.rotate = f.turn.toFixed(2) + "deg"; }
   });
   if (reduce) drawStems(now);
 }
@@ -536,7 +595,7 @@ function tickGarden(now) {
     drawFlower(f, p >= 1 ? 1 : g);
     f.el.style.scale = (0.12 + 0.88 * g).toFixed(3);
     f.el.style.rotate = (f.turn - 34 * (1 - g) * Math.sign(f.spec.bend)).toFixed(2) + "deg";
-    f.glow.style.opacity = (0.3 * g * g).toFixed(3);
+    f.glow.style.opacity = (glowNow() * g * g).toFixed(3);
     if (p >= 1) f.done = true;
   }
   if (growing && stems) drawStems(now);
@@ -702,6 +761,51 @@ function tickSolo(now) {
   if (p >= 1) f.done = true;
 }
 
+/* ---------- About: a flower that grows as you read ----------
+   Scroll progress through the paragraph drives it: the stem climbs first, then the bloom opens. */
+const PLANT_STEM = [0, 1, 0, 2, 0, 1, 3, 0, 4, 0, 5, 1, 0, 2, 0, 3, 1, 0, 0, 2, 0, 1].map(i => ["   |   ", "   |   ", "  \\|   ", "   |/  ", "   )   ", "   (   "][i]);
+let plant, scrubP = 0;
+async function initPlant() {
+  const host = $("[data-plant]");
+  if (!host || !host.clientWidth) return; // hidden on small screens
+  let photo;
+  try { photo = await getPhoto("lotus"); } catch { return; }
+  const f = (plant = { ...photo, ink: inkNow(), invert: dark, done: false, g: -1, stemRows: -1 });
+  f.el = document.createElement("div");
+  f.el.className = "plant__bloom";
+  const sway = document.createElement("div");
+  sway.className = "bloom__sway";
+  f.glow = document.createElement("canvas");
+  f.glow.className = "bloom__glow";
+  f.glow.width = f.bw; f.glow.height = f.bh;
+  f.glow.getContext("2d").putImageData(f.crop, 0, 0);
+  f.canvas = document.createElement("canvas");
+  f.canvas.className = "bloom__ascii";
+  f.ctx = f.canvas.getContext("2d");
+  sway.append(f.glow, f.canvas);
+  f.el.append(sway);
+  f.stemEl = document.createElement("pre");
+  f.stemEl.className = "plant__stem";
+  host.append(f.el, f.stemEl);
+  f.w = Math.min(host.clientWidth, 230); f.h = f.w / f.aspect;
+  f.el.style.width = f.w.toFixed(1) + "px"; f.el.style.height = f.h.toFixed(1) + "px";
+  buildGrid(f, clamp(Math.round(f.w / 3.4), 22, 84));
+  f.canvas.width = Math.round(f.w * dpr); f.canvas.height = Math.round(f.h * dpr);
+}
+function tickPlant() {
+  const f = plant;
+  if (!f) return;
+  const p = reduce ? 1 : scrubP;
+  const n = Math.round(clamp(p / 0.5) * PLANT_STEM.length);
+  if (n !== f.stemRows) { f.stemRows = n; f.stemEl.textContent = PLANT_STEM.slice(PLANT_STEM.length - n).join("\n"); }
+  const g = clamp((p - 0.28) / 0.62);
+  if (Math.abs(g - f.g) < 0.004) return;
+  f.g = g; f.done = g >= 1;
+  drawFlower(f, g >= 1 ? 1 : g);
+  f.el.style.scale = (0.3 + 0.7 * g).toFixed(3);
+  f.glow.style.opacity = (glowNow() * g * g).toFixed(3);
+}
+
 /* ---------- Posters develop from ASCII ----------
    A poster is first typed out as characters in its own colours, top to bottom,
    then the characters dissolve into the real image. */
@@ -800,6 +904,8 @@ function frame(now) {
   tickScramble(now);
   tickDevelop(now);
   tickSolo(now);
+  tickPlant();
+  pickByScroll();
 
   if (!reduce) {
     // hero drifts away slower than the page
@@ -816,14 +922,10 @@ function frame(now) {
     // cursor + preview follow with different lag
     cpos.x = lerp(cpos.x, mouse.x, 0.18); cpos.y = lerp(cpos.y, mouse.y, 0.18);
     cursor.style.transform = `translate3d(${cpos.x.toFixed(1)}px, ${cpos.y.toFixed(1)}px, 0)`;
-    const px = ppos.x;
-    ppos.x = lerp(ppos.x, mouse.x, 0.07); ppos.y = lerp(ppos.y, mouse.y, 0.07);
-    const tilt = clamp((ppos.x - px) * 0.3, -3, 3);
-    previewEl.style.transform = `translate3d(${(ppos.x + 60).toFixed(1)}px, ${(ppos.y - previewEl.offsetHeight / 2).toFixed(1)}px, 0) rotate(${tilt.toFixed(2)}deg)`;
   }
 
   // ink floods the page as the contact section arrives
-  root.classList.toggle("is-dark", contact.getBoundingClientRect().top < innerHeight * 0.55);
+  root.classList.toggle("is-dark", dark || contact.getBoundingClientRect().top < innerHeight * 0.55);
   requestAnimationFrame(frame);
 }
 
@@ -846,6 +948,7 @@ function start() {
   fit();
   lockWords();
   initSolo();
+  initPlant();
   root.classList.remove("is-loading");
   $$("[data-reveal], [data-kinetic], [data-rows]").forEach(el => io.observe(el));
   requestAnimationFrame(frame);

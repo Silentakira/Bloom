@@ -385,3 +385,53 @@ html:not(.is-loading) .nav { transform: none; }
 .contact__bloom { position: absolute; right: 7%; top: 10%; scale: 0.7; transform-origin: 50% 85%; pointer-events: none; }
 .contact__bloom .bloom__glow { filter: blur(48px) saturate(1.4); }
 @media (max-width: 760px) { .contact__bloom { right: 9%; top: 7%; } }
+
+/* ---------- Theme switch ---------- */
+.nav__theme { font: inherit; color: inherit; letter-spacing: inherit; }
+/* the two full-screen panels flip with the theme so their wipes stay visible */
+.theme-dark .loader, .theme-dark .case { background: #f1f1ee; color: #0d0d0c; }
+.theme-dark .case__next { border-top-color: rgba(13, 13, 12, 0.22); }
+
+/* ---------- Hero foot: two facts and the scroll cue ---------- */
+.hero__foot { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ---------- About: growing flower + fact sheet ---------- */
+.statement { align-items: stretch; }
+.statement__side { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
+.plant { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: min(100%, 230px); min-height: 400px; pointer-events: none; }
+.plant__bloom { position: relative; scale: 0.3; transform-origin: 50% 100%; margin-bottom: -8px; }
+.plant__stem { margin: 0; font: 400 10px/1 var(--mono); color: var(--fg); opacity: 0.6; white-space: pre; }
+.facts { margin-top: clamp(48px, 7vw, 120px); max-width: 46rem; }
+.facts > div {
+  display: grid; grid-template-columns: 11rem 1fr; gap: 16px;
+  padding: 11px 0; border-top: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+}
+.facts > div:last-child { border-bottom: 1px solid color-mix(in srgb, var(--fg) 20%, transparent); }
+.facts dt { opacity: 0.55; }
+
+/* ---------- Selected work: list + stage ---------- */
+.work__body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: clamp(24px, 5vw, 90px); align-items: start; }
+.row__btn { grid-template-columns: 3rem 1fr auto 3.2rem; }
+.rows.has-active .row:not(.is-active) { opacity: 0.3; }
+.row.is-active .row__t { font-variation-settings: "wght" 480, "wdth" 100; translate: 0.35em 0; }
+.stage {
+  position: sticky; top: 14vh;
+  display: grid; grid-template-columns: clamp(170px, 19vw, 290px) minmax(0, 1fr); gap: clamp(16px, 2vw, 32px); align-items: start;
+  padding-top: clamp(18px, 2.2vw, 34px);
+}
+.stage__poster { position: relative; aspect-ratio: 3 / 4; overflow: hidden; }
+.stage__info { display: grid; gap: 18px; transition: opacity 0.35s, transform 0.5s var(--expo); }
+.stage__info.is-swapping { opacity: 0; transform: translateY(6px); }
+.stage__blurb { font-size: 15px; line-height: 1.45; opacity: 0.8; text-wrap: pretty; }
+.stage__meta { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; }
+.stage__meta dt { opacity: 0.5; }
+.stage__hint { opacity: 0.45; }
+
+@media (max-width: 760px) {
+  .hero__foot { grid-template-columns: 1fr 1fr; }
+  .plant { display: none; }
+  .facts > div { grid-template-columns: 7.5rem 1fr; }
+  .work__body { grid-template-columns: 1fr; }
+  .stage { display: none; }
+  .row__btn { grid-template-columns: 2.2rem 1fr 54px; }
+}
