@@ -389,8 +389,6 @@ html:not(.is-loading) .nav { transform: none; }
 /* ---------- Theme switch ---------- */
 .nav__theme { font: inherit; color: inherit; letter-spacing: inherit; }
 /* the two full-screen panels flip with the theme so their wipes stay visible */
-.theme-dark .loader, .theme-dark .case { background: #f1f1ee; color: #0d0d0c; }
-.theme-dark .case__next { border-top-color: rgba(13, 13, 12, 0.22); }
 
 /* ---------- Hero foot: two facts and the scroll cue ---------- */
 .hero__foot { grid-template-columns: 1fr 1fr 1fr; }
@@ -487,6 +485,24 @@ html:not(.is-loading) .nav { transform: none; }
   .bouquet { --bq-h: 430px; height: auto; padding-top: 430px; order: 0; margin-bottom: 0; }
   .bouquet .stage { display: grid; position: static; width: 100%; grid-template-columns: 84px minmax(0, 1fr); margin-top: 8px; min-height: 112px; }
   .bq__note { display: grid; position: static; width: 100%; margin-top: 18px; }
+}
+
+/* ---------- Project view: the picked flower beside the project ---------- */
+.case { background: #101010; }
+.case__body { grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.55fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 72px); }
+.case__specimen { align-self: stretch; min-height: 56svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.case__bloom { position: relative; flex: none; scale: 0.2; transform-origin: 50% 100%; margin-bottom: -12px; }
+.case__bloom .bloom__glow { filter: blur(42px) saturate(1.5); }
+.case__stem { margin: 0; font: 400 10px/1 var(--mono); color: #f1f1ee; opacity: 0.6; white-space: pre; }
+.case__poster { max-height: 50svh; width: min(100%, 37.5svh); }
+.case__title { font-size: clamp(38px, 4.4vw, 80px); }
+.case__meta { grid-template-columns: repeat(4, auto); }
+@media (max-width: 760px) {
+  .case__body { grid-template-columns: 1fr; }
+  .case__specimen { min-height: 0; height: 250px; }
+  .case__meta { grid-template-columns: repeat(2, auto); }
+  .case__meta dt, .case__meta dd { grid-row: auto; }
+  .case__meta dt:nth-of-type(n + 3) { margin-top: 10px; }
 }
 
 /* ---------- Bees ---------- */

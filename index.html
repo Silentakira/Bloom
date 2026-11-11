@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="en" class="is-loading">
+<html lang="en" class="is-loading theme-dark is-dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Akira Uriel — Junior Designer</title>
   <meta name="description" content="Akira Uriel is a junior designer based in Portugal, working remotely. Posters, social media and websites. Available now.">
-  <script>/* dark is the default; "light" is only used if the visitor chose it */var t=null;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light")document.documentElement.classList.add("theme-dark","is-dark")</script>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
 
@@ -30,7 +30,7 @@
       <a class="roll" href="#work" data-t="Work"><span>Work</span></a>
       <a class="roll" href="#about" data-t="About"><span>About</span></a>
       <a class="roll" href="#contact" data-t="Contact"><span>Contact</span></a>
-      <button class="roll nav__theme" data-theme-toggle data-t="Dark" aria-label="Switch between light and dark theme"><span>Dark</span></button>
+      
     </nav>
   </header>
 
@@ -173,6 +173,7 @@
       <button class="case__close roll" data-t="Close ✕" data-case="close" data-magnetic><span>Close ✕</span></button>
     </div>
     <div class="case__body">
+      <div class="case__specimen" data-case="specimen" aria-hidden="true"></div>
       <div class="case__poster" data-case="poster" data-in style="--d:0"></div>
       <div class="case__info">
         <p class="label mono" data-case="kind" data-in style="--d:1"></p>
@@ -180,13 +181,13 @@
         <p class="case__blurb" data-case="blurb" data-in style="--d:3"></p>
         <dl class="case__meta mono" data-case="meta" data-in style="--d:4"></dl>
         <button class="case__next" data-case="next" data-in style="--d:5">
-          <span class="mono">Next project</span>
+          <span class="mono">Next flower</span>
           <strong data-case="nextTitle"></strong>
         </button>
       </div>
     </div>
   </div>
 
-  <script src="main.js?v=15"></script>
+  <script src="main.js?v=17"></script>
 </body>
 </html>

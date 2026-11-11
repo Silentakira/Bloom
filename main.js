@@ -55,34 +55,11 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const mouse = { x: innerWidth / 2, y: innerHeight / 2, moved: false };
 const pad = n => String(n).padStart(2, "0");
 
-/* ---------- Theme ---------- */
-const themeBtn = $("[data-theme-toggle]");
-let dark = root.classList.contains("theme-dark");
-const inkNow = () => (dark ? "#f1f1ee" : "#0d0d0c");
-const glowNow = () => (dark ? 0.44 : 0.3);
-function labelTheme() {
-  themeBtn.dataset.t = themeBtn.firstElementChild.textContent = dark ? "Light" : "Dark";
-  themeBtn.setAttribute("aria-pressed", dark);
-}
-function setTheme(next) {
-  dark = next;
-  root.classList.toggle("theme-dark", dark);
-  labelTheme();
-  try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
-  // the flowers are drawn in ink, so they are redrawn in the new ink (light flowers on dark use the inverse shading)
-  for (const f of [...flowers, plant, ...colBlooms, ...bq.flowers]) {
-    if (!f) continue;
-    f.ink = inkNow(); f.invert = dark;
-    if (!f.cols) continue;
-    buildGrid(f, f.cols);
-    if (f === plant) f.g = -1;
-    else if (f.done) { drawFlower(f, 1); f.glow.style.opacity = glowNow(); }
-  }
-  if (stems) drawStems(performance.now());
-  if (bq.ready) drawBqStems();
-}
-themeBtn.addEventListener("click", () => setTheme(!dark));
-labelTheme();
+/* ---------- Theme: dark only ----------
+   Flowers are drawn in light characters with inverse shading, and their colour glow is stronger on dark. */
+const dark = true;
+const inkNow = () => "#f1f1ee";
+const glowNow = () => 0.44;
 
 /* ---------- Kinetic display type ---------- */
 // Split into letters; each letter gains a little weight as the cursor nears it.
@@ -217,10 +194,11 @@ function fillCase(i) {
   cs.idx.textContent = `${pad(i + 1)} / ${pad(projects.length)}`;
   cs.poster.innerHTML = p.poster;
   develop(cs.poster, i, 550);
-  cs.kind.textContent = `${p.kind} — ${p.year}`;
+  cs.kind.textContent = `Specimen ${pad(i + 1)} — ${p.kind}`;
   cs.title.textContent = p.title;
   cs.blurb.textContent = p.blurb;
-  cs.meta.innerHTML = `<dt>Client</dt><dd>${p.client}</dd><dt>Role</dt><dd>${p.role}</dd><dt>Year</dt><dd>${p.year}</dd>`;
+  cs.meta.innerHTML = `<dt>Client</dt><dd>${p.client}</dd><dt>Role</dt><dd>${p.role}</dd><dt>Year</dt><dd>${p.year}</dd><dt>Flower</dt><dd>${FLOWER_NAMES[BQ[i].src]}</dd>`;
+  showCaseFlower(i, caseEl.classList.contains("is-open") ? 150 : 650);
   cs.nextTitle.textContent = next.title;
 }
 function openCase(i, from) {
@@ -1214,6 +1192,63 @@ function tickBees(now) {
   }
 }
 
+/* ---------- Project view: the picked flower ----------
+   Opening a project "picks" its flower from the bouquet: the same species grows
+   large beside the project, stem first, then the bloom. */
+const FLOWER_NAMES = { magnolia: "Magnolia", dahlia: "Dahlia", "violet-lily": "Blue water lily", waterlily: "Water lily", chrysanthemum: "Chrysanthemum", lotus: "Lotus" };
+const cf = { f: null, t0: Infinity, done: true, rows: -1 };
+function showCaseFlower(i, delay) {
+  getPhoto(BQ[i].src).then(photo => {
+    if (!cf.el) {
+      cf.el = document.createElement("div");
+      cf.el.className = "case__bloom";
+      const sway = document.createElement("div");
+      sway.className = "bloom__sway";
+      cf.glow = document.createElement("canvas");
+      cf.glow.className = "bloom__glow";
+      cf.canvas = document.createElement("canvas");
+      cf.canvas.className = "bloom__ascii";
+      cf.ctx = cf.canvas.getContext("2d");
+      sway.append(cf.glow, cf.canvas);
+      cf.el.append(sway);
+      cf.stem = document.createElement("pre");
+      cf.stem.className = "case__stem";
+      cs.specimen.append(cf.el, cf.stem);
+    }
+    const f = (cf.f = { ...photo, ink: "#f1f1ee", invert: true, canvas: cf.canvas, ctx: cf.ctx });
+    const box = cs.specimen.getBoundingClientRect();
+    let size = Math.min(box.height * 0.54, 380);
+    if (size * Math.sqrt(f.aspect) > box.width * 0.9) size = (box.width * 0.9) / Math.sqrt(f.aspect);
+    f.w = size * Math.sqrt(f.aspect); f.h = size / Math.sqrt(f.aspect);
+    cf.el.style.width = f.w.toFixed(1) + "px"; cf.el.style.height = f.h.toFixed(1) + "px";
+    cf.canvas.width = Math.round(f.w * dpr); cf.canvas.height = Math.round(f.h * dpr);
+    cf.glow.width = f.bw; cf.glow.height = f.bh;
+    cf.glow.getContext("2d").putImageData(f.crop, 0, 0);
+    buildGrid(f, clamp(Math.round(f.w / 4.2), 22, 116));
+    cf.stemRows = Math.max(4, Math.min(PLANT_STEM.length, Math.floor((box.height - f.h) / 10)));
+    if (reduce) {
+      drawFlower(f, 1); cf.el.style.scale = 1; cf.glow.style.opacity = 0.5;
+      cf.stem.textContent = PLANT_STEM.slice(0, cf.stemRows).join("\n"); cf.done = true;
+      return;
+    }
+    cf.el.style.scale = 0.2; cf.glow.style.opacity = 0; cf.stem.textContent = ""; cf.rows = -1;
+    cf.t0 = performance.now() + delay; cf.done = false;
+  }).catch(() => {});
+}
+function tickCaseFlower(now) {
+  if (cf.done || !cf.f || now < cf.t0) return;
+  const t = (now - cf.t0) / 1000, f = cf.f;
+  const n = Math.round(clamp(t / 0.7) * cf.stemRows); // the stem climbs first
+  if (n !== cf.rows) { cf.rows = n; cf.stem.textContent = PLANT_STEM.slice(0, cf.stemRows).slice(cf.stemRows - n).join("\n"); }
+  const p = clamp((t - 0.4) / 2.3), g = 1 - Math.pow(1 - p, 3);
+  if (p > 0) {
+    drawFlower(f, p >= 1 ? 1 : g);
+    cf.el.style.scale = (0.2 + 0.8 * g).toFixed(3);
+    cf.glow.style.opacity = (0.5 * g * g).toFixed(3);
+  }
+  if (p >= 1) cf.done = true;
+}
+
 /* ---------- Practice: one flower per discipline ----------
    Same photo-to-ASCII flowers as the hero. Each opens when its column scrolls into view. */
 const colBlooms = [];
@@ -1277,6 +1312,7 @@ function frame(now) {
   tickColBlooms(now);
   tickBouquet(now);
   tickBees(now);
+  tickCaseFlower(now);
 
   if (!reduce) {
     // hero drifts away slower than the page
