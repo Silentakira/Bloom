@@ -13,27 +13,27 @@ const range = (n, f) => Array.from({ length: n }, (_, i) => f(i)).join("");
 
 const projects = [
   {
-    title: "Halde", kind: "Visual identity", year: "2026", client: "Halde Ceramics", role: "Identity, packaging",
+    title: "Halde", kind: "Visual identity", year: "2026", client: "Concept project", role: "Identity, packaging",
     blurb: "An identity for a two-person ceramics studio. One circle, cropped differently every time it appears, stands in for the wheel, the kiln door and the finished plate.",
     poster: svg("#e6dfd0", `<circle cx="215" cy="255" r="150" fill="#b8402a"/><circle cx="88" cy="118" r="44" fill="#161514"/>${cap("#161514", "HALDE CERAMICS", "IDENTITY — 2026")}`),
   },
   {
-    title: "Nocturne", kind: "Poster series", year: "2026", client: "Nocturne Type Festival", role: "Art direction, type",
+    title: "Nocturne", kind: "Poster series", year: "2026", client: "Concept project", role: "Art direction, type",
     blurb: "Campaign for a three-night festival of type and sound. The rings are a score: each poster in the series plays one bar further into the night.",
     poster: svg("#0f0f10", `${range(7, i => `<circle cx="150" cy="410" r="${50 + i * 52}" fill="none" stroke="#d7ff3a" stroke-width="${16 - i * 2}"/>`)}${cap("#d7ff3a", "NOCTURNE TYPE FESTIVAL", "03 NIGHTS — 2026")}`),
   },
   {
-    title: "Ninho", kind: "Social media", year: "2026", client: "Ninho Coffee", role: "Instagram posts, templates",
+    title: "Ninho", kind: "Social media", year: "2026", client: "Concept project", role: "Instagram posts, templates",
     blurb: "A month of Instagram posts for a neighbourhood coffee shop. One grid and three kinds of post: the daily special, the story behind a bean, and the week's opening hours.",
     poster: svg("#2a1a12", `${range(9, i => { const x = 24 + (i % 3) * 88, y = 78 + Math.floor(i / 3) * 88, fill = ["#efe2cf", "#c8623a", "#3d2619"][(i * 2) % 3], ink = fill === "#efe2cf" ? "#2a1a12" : "#efe2cf"; return `<rect x="${x}" y="${y}" width="76" height="76" rx="6" fill="${fill}"/>` + (i % 3 === 0 ? `<circle cx="${x + 38}" cy="${y + 38}" r="19" fill="none" stroke="${ink}" stroke-width="5"/><circle cx="${x + 38}" cy="${y + 38}" r="8" fill="${ink}"/>` : i % 3 === 1 ? `<rect x="${x + 14}" y="${y + 22}" width="48" height="6" fill="${ink}"/><rect x="${x + 14}" y="${y + 36}" width="34" height="6" fill="${ink}"/><rect x="${x + 14}" y="${y + 50}" width="42" height="6" fill="${ink}"/>` : `<path d="M${x + 18} ${y + 54} Q${x + 38} ${y + 10} ${x + 58} ${y + 54}" fill="none" stroke="${ink}" stroke-width="5"/>`); })}${cap("#efe2cf", "NINHO COFFEE", "INSTAGRAM — 2026")}`),
   },
   {
-    title: "Paper Weather", kind: "Publication", year: "2024", client: "Self-initiated", role: "Design, writing, print",
+    title: "Paper Weather", kind: "Publication", year: "2024", client: "Concept project", role: "Design, writing, print",
     blurb: "A risograph journal that reports the weather a month late. Every issue turns thirty days of forecasts into one halftone field.",
     poster: svg("#ff5a2b", `${range(88, i => { const x = i % 8, y = Math.floor(i / 8); const r = 3 + 10 * Math.abs(Math.sin(x * 0.7 + y * 0.45)); return `<circle cx="${33 + x * 33.5}" cy="${62 + y * 29}" r="${r.toFixed(1)}" fill="#1a0e0a"/>`; })}${cap("#1a0e0a", "PAPER WEATHER Nº 4", "RISOGRAPH — 2024")}`),
   },
   {
-    title: "Oru", kind: "Packaging", year: "2023", client: "Oru Tea", role: "Packaging, illustration",
+    title: "Oru", kind: "Packaging", year: "2023", client: "Concept project", role: "Packaging, illustration",
     blurb: "Folded cartons for a small tea importer. The box opens along the same creases as the pattern printed on it.",
     poster: svg("#1c3a2e", `<polygon points="40,330 150,80 150,330" fill="#f4b6c8"/><polygon points="150,330 150,80 260,330" fill="#f9d7e0"/><polygon points="150,160 208,280 150,330" fill="#e58fa9"/>${cap("#f9d7e0", "ORU TEA", "PACKAGING — 2023")}`),
   },
@@ -189,10 +189,10 @@ function fillCase(i) {
   cs.idx.textContent = `${pad(i + 1)} / ${pad(projects.length)}`;
   cs.poster.innerHTML = p.poster;
   develop(cs.poster, i, 550);
-  cs.kind.textContent = `Specimen ${pad(i + 1)} — ${p.kind}`;
+  cs.kind.textContent = `Specimen ${pad(i + 1)} — ${p.kind}, concept`;
   cs.title.textContent = p.title;
   cs.blurb.textContent = p.blurb;
-  cs.meta.innerHTML = `<dt>Client</dt><dd>${p.client}</dd><dt>Role</dt><dd>${p.role}</dd><dt>Year</dt><dd>${p.year}</dd><dt>Flower</dt><dd>${FLOWER_NAMES[BQ[i].src]}</dd>`;
+  cs.meta.innerHTML = `<dt>Type</dt><dd>${p.client}</dd><dt>Role</dt><dd>${p.role}</dd><dt>Year</dt><dd>${p.year}</dd><dt>Flower</dt><dd>${FLOWER_NAMES[BQ[i].src]}</dd>`;
   showCaseFlower(i, caseEl.classList.contains("is-open") ? 150 : 650);
   cs.nextTitle.textContent = next.title;
 }
