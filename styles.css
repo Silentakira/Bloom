@@ -613,6 +613,20 @@ html:not(.is-loading) .nav { transform: none; }
   .field { height: 660px; margin-top: -10px; }
 }
 
+/* ---------- Nav: sits on a fade, so whatever scrolls under it disappears before it meets the name ---------- */
+.nav { color: #f1f1ee; mix-blend-mode: normal; }
+.nav::before {
+  content: ""; position: absolute; inset: 0 0 -30px 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(#0d0d0c 0%, #0d0d0c 46%, rgba(13, 13, 12, 0));
+}
+
+/* ---------- Between sections: more room, and a stem that leads from one to the next ---------- */
+.seam { height: clamp(200px, 34vh, 380px); margin: clamp(30px, 6vh, 90px) 0; display: flex; justify-content: center; align-items: flex-start; pointer-events: none; }
+.seam__stem { margin: 0; font: 400 10px/1 var(--mono); color: var(--fg); opacity: 0.5; white-space: pre; }
+.statement, .work, .practice { will-change: opacity; }
+.work { padding-bottom: clamp(40px, 6vw, 100px); }
+.statement { padding-top: clamp(60px, 9vw, 150px); }
+
 /* ---------- Practice: the pond ---------- */
 .practice { display: block; position: relative; padding-left: 0; padding-right: 0; padding-bottom: clamp(40px, 6vw, 100px); }
 .practice__side { position: absolute; left: var(--pad); z-index: 3; pointer-events: none; }

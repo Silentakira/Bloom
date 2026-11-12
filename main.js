@@ -301,7 +301,6 @@ if (fine && !reduce) {
 }
 
 /* ---------- Marquee (drifts; scroll nudges its speed and direction) ---------- */
-const track = $("[data-marquee]");
 let mx = 0, mdir = 1, vel = 0, lastY = scrollY, half = 0;
 
 /* ---------- Hero: ASCII flowers + frogs ----------
@@ -1651,6 +1650,38 @@ function tickColBlooms(now) {
   }
 }
 
+/* ---------- Between sections ----------
+   A single stem grows down through the gap as you scroll, ending in a bud, so one
+   section leads into the next. Each section also fades up as it arrives and
+   fades back as it leaves, instead of being cut off by the edge of the screen. */
+const seams = $$(".seam").map(el => {
+  const rows = Math.max(8, Math.floor(el.clientHeight / 10) - 2);
+  const lines = Array.from({ length: rows }, (_, i) => PLANT_STEM[(i * 3) % PLANT_STEM.length]);
+  return { el, pre: el.firstElementChild, lines, shown: -1 };
+});
+const fadeSections = $$(".statement, .work, .practice").map(el => ({ el, o: -1 }));
+function tickSeams() {
+  for (const s of seams) {
+    const r = s.el.getBoundingClientRect();
+    if (r.bottom < -40 || r.top > innerHeight + 40) continue;
+    const p = reduce ? 1 : clamp((innerHeight * 0.92 - r.top) / (r.height + innerHeight * 0.22));
+    const n = Math.round(p * s.lines.length);
+    if (n === s.shown) continue;
+    s.shown = n;
+    s.pre.textContent = n ? s.lines.slice(0, n).join("\n") + "\n" + (n < s.lines.length ? "   '   " : "  (*)  ") : "";
+  }
+  if (reduce) return;
+  for (const f of fadeSections) {
+    const r = f.el.getBoundingClientRect();
+    if (r.bottom < -200 || r.top > innerHeight + 200) continue;
+    const arrive = smooth(innerHeight * 0.98 - r.top, 0, innerHeight * 0.45), leave = smooth(r.bottom, innerHeight * 0.04, innerHeight * 0.42);
+    const o = Math.min(arrive, leave);
+    if (Math.abs(o - f.o) < 0.004) continue;
+    f.o = o;
+    f.el.style.opacity = o.toFixed(3);
+  }
+}
+
 /* ---------- Frame loop ---------- */
 const contact = $(".contact");
 function frame(now) {
@@ -1674,6 +1705,7 @@ function frame(now) {
   tickPond(now);
   tickField(now);
   tickPetals(now);
+  tickSeams();
 
   if (!reduce) {
     // hero drifts away slower than the page
@@ -1681,12 +1713,6 @@ function frame(now) {
       heroInner.style.transform = `translate3d(0, ${(y * 0.14).toFixed(1)}px, 0)`;
       heroInner.style.opacity = clamp(1 - y / (innerHeight * 0.9)).toFixed(3);
     }
-    // marquee
-    half = half || track.scrollWidth / 2;
-    mx -= (0.45 + Math.abs(vel) * 0.12) * mdir;
-    if (mx <= -half) mx += half;
-    if (mx > 0) mx -= half;
-    track.style.transform = `translate3d(${mx.toFixed(1)}px, 0, 0)`;
     // cursor + preview follow with different lag
   }
 
