@@ -55,6 +55,18 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const mouse = { x: innerWidth / 2, y: innerHeight / 2, moved: false };
 const pad = n => String(n).padStart(2, "0");
 
+/* ---------- Quality ----------
+   Q is 2 (full), 1 (reduced) or 0 (minimal). It starts from what the device
+   reports (few CPU cores, little memory, or a phone start lower) and the frame
+   loop steps it down if frames keep arriving late. It never steps back up, so
+   the page does not flip between looks.
+   What each level changes is noted where Q is read. */
+const cores = navigator.hardwareConcurrency || 8, memory = navigator.deviceMemory || 8;
+let Q = cores <= 2 || memory <= 2 ? 0 : cores <= 4 || memory <= 4 || !fine ? 1 : 2;
+const askedQ = new URLSearchParams(location.search).get("q"); // add ?q=0, ?q=1 or ?q=2 to the address to preview a level
+if (askedQ !== null && [0, 1, 2].includes(+askedQ)) Q = +askedQ;
+root.dataset.q = Q;
+
 /* ---------- Theme: dark only ----------
    Flowers are drawn in light characters with inverse shading, and their colour glow is stronger on dark. */
 const dark = true;
@@ -371,7 +383,7 @@ const WHITES = { valley: 0.5, "white-lily": 0.52 }; // photos where the flower i
 const CUTS = { chrysanthemum: 0.3 }; // brightness below which a photo's dark background is dropped (default 0.16)
 const RAMP = " .'`,:;-~+=<>i!lI?/|()1{}[]rcvunxzjftLCJUYXZO0Qoahkbdpqwm*WMB8&%$#@";
 const CELL = 3.4; // px per character column
-const dpr = Math.min(devicePixelRatio || 1, 2);
+const dpr = Math.min(devicePixelRatio || 1, [1, 1.5, 2][Q]);
 const smooth = (v, a, b) => { const t = clamp((v - a) / (b - a)); return t * t * (3 - 2 * t); };
 const flowers = [];
 let garden;
@@ -1320,8 +1332,9 @@ async function initField() {
   const small = innerWidth < 760, S = small ? 112 : 178;
   const mr = masterFlower(red, S, "#ff9c8a"), mw = masterFlower(white, S * 0.92, "#f6f6f1");
   // rows from far to near; [row, column] of the white flowers
-  const rows = small ? [4, 5, 5, 5] : [8, 9, 10, 10, 9];
-  const says = small ? [[1, 0], [2, 4], [3, 1], [3, 3]] : [[2, 1], [2, 8], [4, 2], [4, 6]]; // out at the sides and the front, clear of the text
+  const tier = small || Q === 0 ? 0 : Q; // 19, 33 or 46 flowers
+  const rows = [[4, 5, 5, 5], [6, 7, 7, 7, 6], [8, 9, 10, 10, 9]][tier];
+  const says = [[[1, 0], [2, 4], [3, 1], [3, 3]], [[2, 1], [2, 5], [4, 1], [4, 4]], [[2, 1], [2, 8], [4, 2], [4, 6]]][tier]; // out at the sides and the front, clear of the text
   let sayI = 0;
   rows.forEach((n, r) => {
     for (let c = 0; c < n; c++) {
@@ -1376,8 +1389,10 @@ function tickField(now) {
   const lean = live && fine && mouse.moved;
   const mxn = clamp((mouse.x - r.left) / r.width) - 0.5, myn = clamp((mouse.y - r.top) / r.height) - 0.5;
   field.rx = lerp(field.rx, lean ? -myn * 5 : 0, 0.04); field.rz = lerp(field.rz, lean ? -mxn * 5 : 0, 0.04);
-  field.plane.style.setProperty("--rx", field.rx.toFixed(2) + "deg");
-  field.plane.style.setProperty("--rz", field.rz.toFixed(2) + "deg");
+  const frx = field.rx.toFixed(2), frz = field.rz.toFixed(2);
+  if (frx !== field.rxs) { field.rxs = frx; field.plane.style.setProperty("--rx", frx + "deg"); }
+  if (frz !== field.rzs) { field.rzs = frz; field.plane.style.setProperty("--rz", frz + "deg"); }
+  const moveNow = field.frame % (3 - Q) === 0; // every frame, every second or every third
   const measure = field.frame++ % 30 === 0; // where each flower is on screen, refreshed twice a second
 const gust = lean && brushV.s > 0.4;
 const tr = measure ? (field.text.firstElementChild || field.text).getBoundingClientRect() : null;
@@ -1389,6 +1404,7 @@ for (const f of field.fls) {
     const behind = !f.telling && f.sx > tr.left - 40 && f.sx < tr.right + 40 && f.sy > tr.top - 60 && f.sy < tr.bottom + 50;
     if (behind !== f.behind) { f.behind = behind; f.el.classList.toggle("is-behind", behind); }
   }
+    if (!moveNow) continue;
     if (gust) { // the cursor passing is a gust of wind
       const dx = Math.abs(mouse.x - f.sx), dy = Math.abs(mouse.y - f.sy);
       if (dx < 150 && dy < 190) f.gv += clamp(brushV.x, -14, 14) * 0.014 * (1 - dx / 150);
@@ -1435,7 +1451,7 @@ function tickPetals(now) {
     petals.W = r.width; petals.H = r.height;
     petals.cv.width = Math.round(r.width); petals.cv.height = Math.round(r.height);
   }
-  if (now > petals.next && petals.list.length < 26) { // a petal lets go of one of the red flowers
+  if (now > petals.next && petals.list.length < [0, 12, 26][Q]) { // a petal lets go of one of the red flowers
     const reds = field.fls.filter(f => !f.telling && f.sx > -999), src = reds[Math.floor(Math.random() * reds.length)];
     if (src) petals.list.push({ x: src.sx - r.left + rand(-24, 24), y: src.sy - r.top + rand(-16, 16), vx: rand(0.15, 0.6), vy: rand(0.25, 0.6), ph: rand(0, 6), ch: "',`~)("[Math.floor(rand(0, 6))], born: now, life: rand(9000, 15000) });
     petals.next = now + rand(600, 1500);
@@ -1472,7 +1488,7 @@ const POND = [
 const pond = { el: $("[data-pond]"), lilies: [], ripples: [], focus: -1, ready: false, visible: false, rx: 0, rz: 0, frame: 0, drawn: false, lastRip: { x: -999, y: -999 } };
 function addRipple(x, y, amp) {
   pond.ripples.push({ x, y, amp, t0: performance.now() / 1000 });
-  if (pond.ripples.length > 16) pond.ripples.shift();
+  if (pond.ripples.length > [6, 10, 16][Q]) pond.ripples.shift();
 }
 function focusLily(i) {
   if (i === pond.focus) return;
@@ -1540,9 +1556,9 @@ async function initPond() {
   }, { threshold: 0.12 }).observe(pond.el);
 }
 function drawWater(t) {
-  const { ctx, W, H } = pond, cw = 13, ch = 16;
+  const { ctx, W, H } = pond, cw = [22, 17, 13][Q], ch = [27, 21, 16][Q];
   ctx.clearRect(0, 0, W, H);
-  ctx.font = '500 13px "DM Mono", monospace';
+  ctx.font = `500 ${cw}px "DM Mono", monospace`;
   ctx.textBaseline = "top";
   ctx.fillStyle = "#f1f1ee";
   pond.ripples = pond.ripples.filter(r => t - r.t0 < 5.5);
@@ -1570,8 +1586,9 @@ function tickPond(now) {
   // the camera leans a little with the pointer, which is what sells the depth
   const mxn = clamp((mouse.x - r.left) / r.width) - 0.5, myn = clamp((mouse.y - r.top) / r.height) - 0.5, lean = live && fine && mouse.moved;
   pond.rx = lerp(pond.rx, lean ? -myn * 6 : 0, 0.04); pond.rz = lerp(pond.rz, lean ? -mxn * 5 : 0, 0.04);
-  pond.plane.style.setProperty("--rx", pond.rx.toFixed(2) + "deg");
-  pond.plane.style.setProperty("--rz", pond.rz.toFixed(2) + "deg");
+  const prx = pond.rx.toFixed(2), prz = pond.rz.toFixed(2); // only touch the 3D plane when the lean actually changed
+  if (prx !== pond.rxs) { pond.rxs = prx; pond.plane.style.setProperty("--rx", prx + "deg"); }
+  if (prz !== pond.rzs) { pond.rzs = prz; pond.plane.style.setProperty("--rz", prz + "deg"); }
   for (const f of pond.lilies) {
     if (!f.done && now >= f.t0) { // open on arrival
       const p = reduce ? 1 : clamp((now - f.t0) / 2200), g = 1 - Math.pow(1 - p, 3);
@@ -1602,7 +1619,7 @@ function tickPond(now) {
     }
     card.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
   }
-  if (reduce ? !pond.drawn : pond.frame++ % 2 === 0) drawWater(t); // water at half the frame rate
+  if (reduce ? !pond.drawn : pond.frame++ % [4, 3, 2][Q] === 0) drawWater(t); // water at a half, a third or a quarter of the frame rate
 }
 
 /* ---------- Practice: one flower per discipline ----------
@@ -1660,7 +1677,10 @@ const seams = $$(".seam").map(el => {
   return { el, pre: el.firstElementChild, lines, shown: -1 };
 });
 const fadeSections = $$(".statement, .work, .practice").map(el => ({ el, o: -1 }));
+let seamY = -1, fadesOff = false;
 function tickSeams() {
+  if (scrollY === seamY) return; // nothing moves here unless the page scrolls
+  seamY = scrollY;
   for (const s of seams) {
     const r = s.el.getBoundingClientRect();
     if (r.bottom < -40 || r.top > innerHeight + 40) continue;
@@ -1670,7 +1690,10 @@ function tickSeams() {
     s.shown = n;
     s.pre.textContent = n ? s.lines.slice(0, n).join("\n") + "\n" + (n < s.lines.length ? "   '   " : "  (*)  ") : "";
   }
-  if (reduce) return;
+  if (reduce || Q === 0) { // fading whole sections is costly to composite; skip it on the slowest devices
+    if (!fadesOff) { fadeSections.forEach(f => (f.el.style.opacity = "")); fadesOff = true; }
+    return;
+  }
   for (const f of fadeSections) {
     const r = f.el.getBoundingClientRect();
     if (r.bottom < -200 || r.top > innerHeight + 200) continue;
@@ -1682,9 +1705,23 @@ function tickSeams() {
   }
 }
 
+/* ---------- Off-screen sections rest ---------- */
+const restIO = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle("is-off", !e.isIntersecting)), { rootMargin: "120px" });
+$$(".hero, .statement, .work, .practice, .contact").forEach(el => restIO.observe(el));
+
 /* ---------- Frame loop ---------- */
 const contact = $(".contact");
+const pace = { last: 0, ema: 16, check: 0 };
 function frame(now) {
+  // step the quality down if frames keep arriving late (under about 42 a second), checked every 2.5s once the page has settled
+  const dt = now - pace.last;
+  pace.last = now;
+  if (dt > 0 && dt < 250) pace.ema = pace.ema * 0.95 + dt * 0.05;
+  if (!pace.check) pace.check = now + 5000;
+  else if (now > pace.check) {
+    pace.check = now + 2500;
+    if (pace.ema > 24 && Q > 0 && !document.hidden) { Q--; root.dataset.q = Q; pace.ema = 16; }
+  }
   const y = scrollY, dy = y - lastY;
   lastY = y;
   vel = lerp(vel, dy, 0.12);
