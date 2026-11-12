@@ -11,16 +11,20 @@ const svg = (bg, inner) =>
   `<svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="300" height="400" fill="${bg}"/>${inner}</svg>`;
 const range = (n, f) => Array.from({ length: n }, (_, i) => f(i)).join("");
 
+// a placeholder poster shaped like a browser window, for website projects
+const site = (bg, ink, body, a, b) =>
+  svg(bg, `<rect x="20" y="52" width="260" height="300" rx="8" fill="none" stroke="${ink}" stroke-width="2"/><line x1="20" y1="76" x2="280" y2="76" stroke="${ink}" stroke-width="2"/><circle cx="34" cy="64" r="3" fill="${ink}"/><circle cx="46" cy="64" r="3" fill="${ink}"/><circle cx="58" cy="64" r="3" fill="${ink}"/>${body}${cap(ink, a, b)}`);
+
 const projects = [
   {
-    title: "Halde", kind: "Visual identity", year: "2026", client: "Concept project", role: "Identity, packaging",
-    blurb: "An identity for a two-person ceramics studio. One circle, cropped differently every time it appears, stands in for the wheel, the kiln door and the finished plate.",
-    poster: svg("#e6dfd0", `<circle cx="215" cy="255" r="150" fill="#b8402a"/><circle cx="88" cy="118" r="44" fill="#161514"/>${cap("#161514", "HALDE CERAMICS", "IDENTITY — 2026")}`),
+    title: "Halde", kind: "Small business site", year: "2026", client: "Concept project", role: "Web design",
+    blurb: "A website for a two-person ceramics studio. Three things up front: what they make, when the next kiln opening is, and how to order.",
+    poster: site("#e6dfd0", "#161514", `<circle cx="206" cy="176" r="62" fill="#b8402a"/><rect x="36" y="100" width="96" height="11" fill="#161514"/><rect x="36" y="119" width="64" height="11" fill="#161514"/><rect x="36" y="148" width="54" height="16" rx="8" fill="#161514"/>${range(3, i => `<rect x="${36 + i * 78}" y="268" width="66" height="66" fill="none" stroke="#161514" stroke-width="2"/>`)}`, "HALDE CERAMICS", "WEBSITE — 2026"),
   },
   {
-    title: "Nocturne", kind: "Poster series", year: "2026", client: "Concept project", role: "Art direction, type",
-    blurb: "Campaign for a three-night festival of type and sound. The rings are a score: each poster in the series plays one bar further into the night.",
-    poster: svg("#0f0f10", `${range(7, i => `<circle cx="150" cy="410" r="${50 + i * 52}" fill="none" stroke="#d7ff3a" stroke-width="${16 - i * 2}"/>`)}${cap("#d7ff3a", "NOCTURNE TYPE FESTIVAL", "03 NIGHTS — 2026")}`),
+    title: "Nocturne", kind: "Landing page", year: "2026", client: "Concept project", role: "Web design",
+    blurb: "A one-page site for a three-night festival of type and sound. The line-up, the dates and a ticket button, and nothing else.",
+    poster: site("#0f0f10", "#d7ff3a", `${range(5, i => { const r = 40 + i * 22; return `<path d="M${150 - r} 350 A${r} ${r} 0 0 1 ${150 + r} 350" fill="none" stroke="#d7ff3a" stroke-width="${9 - i}"/>`; })}<rect x="36" y="94" width="78" height="20" rx="10" fill="#d7ff3a"/>`, "NOCTURNE TYPE FESTIVAL", "LANDING PAGE — 2026"),
   },
   {
     title: "Ninho", kind: "Social media", year: "2026", client: "Concept project", role: "Instagram posts, templates",
@@ -28,14 +32,14 @@ const projects = [
     poster: svg("#2a1a12", `${range(9, i => { const x = 24 + (i % 3) * 88, y = 78 + Math.floor(i / 3) * 88, fill = ["#efe2cf", "#c8623a", "#3d2619"][(i * 2) % 3], ink = fill === "#efe2cf" ? "#2a1a12" : "#efe2cf"; return `<rect x="${x}" y="${y}" width="76" height="76" rx="6" fill="${fill}"/>` + (i % 3 === 0 ? `<circle cx="${x + 38}" cy="${y + 38}" r="19" fill="none" stroke="${ink}" stroke-width="5"/><circle cx="${x + 38}" cy="${y + 38}" r="8" fill="${ink}"/>` : i % 3 === 1 ? `<rect x="${x + 14}" y="${y + 22}" width="48" height="6" fill="${ink}"/><rect x="${x + 14}" y="${y + 36}" width="34" height="6" fill="${ink}"/><rect x="${x + 14}" y="${y + 50}" width="42" height="6" fill="${ink}"/>` : `<path d="M${x + 18} ${y + 54} Q${x + 38} ${y + 10} ${x + 58} ${y + 54}" fill="none" stroke="${ink}" stroke-width="5"/>`); })}${cap("#efe2cf", "NINHO COFFEE", "INSTAGRAM — 2026")}`),
   },
   {
-    title: "Paper Weather", kind: "Publication", year: "2024", client: "Concept project", role: "Design, writing, print",
-    blurb: "A risograph journal that reports the weather a month late. Every issue turns thirty days of forecasts into one halftone field.",
-    poster: svg("#ff5a2b", `${range(88, i => { const x = i % 8, y = Math.floor(i / 8); const r = 3 + 10 * Math.abs(Math.sin(x * 0.7 + y * 0.45)); return `<circle cx="${33 + x * 33.5}" cy="${62 + y * 29}" r="${r.toFixed(1)}" fill="#1a0e0a"/>`; })}${cap("#1a0e0a", "PAPER WEATHER Nº 4", "RISOGRAPH — 2024")}`),
+    title: "Paper Weather", kind: "Journal site", year: "2026", client: "Concept project", role: "Web design",
+    blurb: "An online journal that reports the weather a month late. A plain list of entries, with one large halftone image at the top of each.",
+    poster: site("#ff5a2b", "#1a0e0a", `${range(40, i => { const x = i % 10, y = Math.floor(i / 10); return `<circle cx="${45 + x * 23.4}" cy="${98 + y * 21}" r="${(2.5 + 6.5 * Math.abs(Math.sin(x * 0.7 + y * 0.6))).toFixed(1)}" fill="#1a0e0a"/>`; })}${[150, 110, 170, 90].map((w, i) => `<rect x="36" y="${214 + i * 30}" width="${w}" height="8" fill="#1a0e0a"/><rect x="232" y="${214 + i * 30}" width="32" height="8" fill="#1a0e0a"/>`).join("")}`, "PAPER WEATHER", "JOURNAL SITE — 2026"),
   },
   {
-    title: "Oru", kind: "Packaging", year: "2023", client: "Concept project", role: "Packaging, illustration",
-    blurb: "Folded cartons for a small tea importer. The box opens along the same creases as the pattern printed on it.",
-    poster: svg("#1c3a2e", `<polygon points="40,330 150,80 150,330" fill="#f4b6c8"/><polygon points="150,330 150,80 260,330" fill="#f9d7e0"/><polygon points="150,160 208,280 150,330" fill="#e58fa9"/>${cap("#f9d7e0", "ORU TEA", "PACKAGING — 2023")}`),
+    title: "Oru", kind: "Online shop", year: "2026", client: "Concept project", role: "Web design",
+    blurb: "A small online shop for a tea importer. Four teas on the first screen, each one two clicks from the basket.",
+    poster: site("#1c3a2e", "#f9d7e0", `${range(4, i => { const x = 36 + (i % 2) * 120, y = 94 + Math.floor(i / 2) * 126; return `<rect x="${x}" y="${y}" width="108" height="112" fill="none" stroke="#f9d7e0" stroke-width="2"/><polygon points="${x + 24},${y + 78} ${x + 54},${y + 22} ${x + 54},${y + 78}" fill="#f4b6c8"/><polygon points="${x + 54},${y + 78} ${x + 54},${y + 22} ${x + 84},${y + 78}" fill="#f9d7e0"/><rect x="${x + 24}" y="${y + 90}" width="46" height="6" fill="#f9d7e0"/>`; })}`, "ORU TEA", "ONLINE SHOP — 2026"),
   },
 ];
 
