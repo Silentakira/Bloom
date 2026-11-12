@@ -1258,9 +1258,15 @@ function tickCaseFlower(now) {
    A few white lily of the valley sprigs stand among the red. Those are the ones
    that carry the facts: point at one and it says its line.
    FIELD_SAYS: one line per white flower. */
-const FIELD_SAYS = ["one year in", "six months at Boutik Studio", "studied multimedia design", "Portugal, working remotely"];
+// short: the whisper beside the flower on hover. full: the line that takes over the centre when you click it.
+const FIELD_SAYS = [
+  { short: "one year in", full: "One year of practice so far." },
+  { short: "six months at Boutik Studio", full: "Six months as an intern at Boutik Studio." },
+  { short: "studied multimedia design", full: "I studied multimedia design." },
+  { short: "Portugal, working remotely", full: "Based in Portugal, working remotely." },
+];
 const FIELD_TILT = 64;
-const field = { el: $("[data-field]"), fls: [], ready: false, visible: false, open: false, rx: 0, rz: 0, frame: 0 };
+const field = { el: $("[data-field]"), fls: [], ready: false, visible: false, open: false, rx: 0, rz: 0, frame: 0, hover: null, pinned: null };
 // one flower drawn once, then copied to every canvas in the field
 function masterFlower(photo, size, ink) {
   const f = { ...photo, ink, invert: true };
@@ -1272,9 +1278,19 @@ function masterFlower(photo, size, ink) {
   drawFlower(f, 1);
   return f;
 }
-function sayFlower(fl) {
-  field.el.classList.toggle("has-focus", !!fl);
-  field.fls.forEach(f => f.el.classList.toggle("is-on", f === fl));
+// hovering a white flower shows its short line beside it; clicking pins it and brings its full line
+// into focus in the centre, with the main statement falling out of focus behind it
+function sayFlower(fl) { field.hover = fl; showSaying(); }
+function pinFlower(fl) {
+  field.pinned = field.pinned === fl ? null : fl;
+  if (field.pinned) field.focusText.textContent = field.pinned.say.full;
+  field.el.classList.toggle("is-said", !!field.pinned);
+  showSaying();
+}
+function showSaying() {
+  const cur = field.hover || field.pinned;
+  field.el.classList.toggle("has-focus", !!cur);
+  field.fls.forEach(f => f.el.classList.toggle("is-on", f === cur || f === field.pinned));
 }
 function sizeField() {
   if (!field.plane) return;
@@ -1298,16 +1314,18 @@ async function initField() {
   try { [red, white] = await Promise.all([getPhoto("spider-lily"), getPhoto("valley")]); } catch { return; }
   field.plane = $(".field__plane", field.el);
   field.ground = $(".field__ground", field.el);
+  field.text = $(".field__text", field.el);
+  field.focusText = $(".field__focus", field.el);
   const small = innerWidth < 760, S = small ? 112 : 178;
   const mr = masterFlower(red, S, "#ff9c8a"), mw = masterFlower(white, S * 0.8, "#f6f6f1");
   // rows from far to near; [row, column] of the white flowers
-  const rows = small ? [3, 3, 4, 4] : [5, 6, 6, 6, 5];
-  const says = small ? [[1, 1], [2, 0], [2, 3], [3, 2]] : [[2, 1], [2, 4], [3, 2], [4, 3]];
+  const rows = small ? [4, 5, 5, 5] : [8, 9, 10, 10, 9];
+  const says = small ? [[1, 0], [2, 4], [3, 1], [3, 3]] : [[2, 1], [2, 8], [4, 2], [4, 6]]; // out at the sides and the front, clear of the text
   let sayI = 0;
   rows.forEach((n, r) => {
     for (let c = 0; c < n; c++) {
       const depth = r / (rows.length - 1);
-      const v = 0.2 + depth * 0.62 + rand(-0.03, 0.03);
+      const v = 0.18 + depth * 0.64 + rand(-0.04, 0.04);
       const u = ((c + 0.5 + rand(-0.3, 0.3)) / n) * (small ? 0.66 : 0.86) + (small ? 0.17 : 0.07); // kept further from the edges on phones
       const telling = says.some(([a, b]) => a === r && b === c), m = telling ? mw : mr;
       const el = document.createElement(telling ? "button" : "div");
@@ -1320,26 +1338,28 @@ async function initField() {
       cv.getContext("2d").drawImage(m.canvas, 0, 0);
       el.style.setProperty("--d", (r * 0.2 + rand(0, 0.3)).toFixed(2) + "s"); // far rows come up first
       el.style.setProperty("--fade", (0.38 + 0.62 * depth).toFixed(2));        // and stay fainter
-      const fl = { el, u, v, telling, w: m.w, phase: rand(0, 6), ga: 0, gv: 0, sx: -9999, sy: -9999 };
+      const fl = { el, u, v, telling, w: m.w, phase: rand(0, 6), ga: 0, gv: 0, sx: -9999, sy: -9999, behind: false };
       if (telling) {
-        const line = FIELD_SAYS[sayI++];
+        fl.say = FIELD_SAYS[sayI++];
         const say = document.createElement("span");
         say.className = "fl__say";
-        say.textContent = line;
+        say.textContent = fl.say.short;
         el.append(say);
-        el.setAttribute("aria-label", line);
+        el.setAttribute("aria-label", fl.say.full);
         el.dataset.cursor = "link";
         el.addEventListener("mouseenter", () => sayFlower(fl));
         el.addEventListener("mouseleave", () => sayFlower(null));
         el.addEventListener("focus", () => sayFlower(fl));
         el.addEventListener("blur", () => sayFlower(null));
-        el.addEventListener("click", () => { if (!fine) sayFlower(el.classList.contains("is-on") ? null : fl); });
+        el.addEventListener("click", e => { e.stopPropagation(); pinFlower(fl); });
       } else el.setAttribute("aria-hidden", "true");
       field.plane.append(el);
       field.fls.push(fl);
     }
   });
   sizeField();
+  field.el.addEventListener("click", () => field.pinned && pinFlower(field.pinned)); // click anywhere else to return
+  addEventListener("keydown", e => { if (e.key === "Escape" && field.pinned) pinFlower(field.pinned); });
   field.ready = true;
   new IntersectionObserver(([e]) => {
     field.visible = e.isIntersecting;
@@ -1358,15 +1378,22 @@ function tickField(now) {
   field.plane.style.setProperty("--rx", field.rx.toFixed(2) + "deg");
   field.plane.style.setProperty("--rz", field.rz.toFixed(2) + "deg");
   const measure = field.frame++ % 30 === 0; // where each flower is on screen, refreshed twice a second
-  const gust = lean && brushV.s > 0.4;
-  for (const f of field.fls) {
-    if (measure) { const b = f.el.getBoundingClientRect(); f.sx = b.left + b.width / 2; f.sy = b.top + b.height * 0.25; }
+const gust = lean && brushV.s > 0.4;
+const tr = measure ? (field.text.firstElementChild || field.text).getBoundingClientRect() : null;
+for (const f of field.fls) {
+  if (measure) {
+    const b = f.el.getBoundingClientRect();
+    f.sx = b.left + b.width / 2; f.sy = b.top + b.height * 0.25;
+    // red flowers that stand behind the words drop out of focus, so the text reads without a backing
+    const behind = !f.telling && f.sx > tr.left - 40 && f.sx < tr.right + 40 && f.sy > tr.top - 60 && f.sy < tr.bottom + 50;
+    if (behind !== f.behind) { f.behind = behind; f.el.classList.toggle("is-behind", behind); }
+  }
     if (gust) { // the cursor passing is a gust of wind
       const dx = Math.abs(mouse.x - f.sx), dy = Math.abs(mouse.y - f.sy);
-      if (dx < 150 && dy < 190) f.gv += clamp(brushV.x, -25, 25) * 0.045 * (1 - dx / 150);
+      if (dx < 150 && dy < 190) f.gv += clamp(brushV.x, -14, 14) * 0.014 * (1 - dx / 150);
     }
-    f.gv = (f.gv - 0.035 * f.ga) * 0.93;
-    f.ga = clamp(f.ga + f.gv, -24, 24);
+    f.gv = (f.gv - 0.011 * f.ga) * 0.95;
+    f.ga = clamp(f.ga + f.gv, -9, 9);
     const sway = live ? Math.sin(t * 0.9 + f.phase) * 2.6 + Math.sin(t * 0.37 + f.phase * 2) * 1.6 + f.ga : 0;
     f.el.style.transform = `translate3d(${(f.x - f.w / 2).toFixed(1)}px, ${(f.y - f.h).toFixed(1)}px, 0) rotateX(${-FIELD_TILT}deg) rotateZ(${sway.toFixed(2)}deg)`;
   }

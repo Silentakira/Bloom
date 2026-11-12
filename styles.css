@@ -583,6 +583,34 @@ html:not(.is-loading) .nav { transform: none; }
   .fl--r.is-on .fl__say { translate: 0 0; }
 }
 
+/* ---------- About: statement in the middle of the field ---------- */
+.statement__label { position: relative; z-index: 3; }
+.field { height: min(100vh, 940px); margin-top: clamp(-60px, -3vw, -20px); }
+.field__text { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; padding: 0 var(--pad); pointer-events: none; }
+.field__text .statement__text {
+  grid-area: 1 / 1; max-width: 19em; text-align: center; text-wrap: balance;
+  /* a soft dark halo hugging the letters, not a box behind them */
+  text-shadow: 0 0 14px #0d0d0c, 0 0 34px #0d0d0c, 0 0 70px #0d0d0c;
+  transition: opacity 0.7s, filter 0.8s;
+}
+/* flowers standing behind the words fall out of focus */
+.field.is-open .fl.is-behind { opacity: calc(var(--fade, 1) * 0.3); }
+.fl__head { transition: scale 1.9s var(--expo) var(--d, 0s), filter 0.8s; }
+.fl.is-behind .fl__head { filter: blur(2.6px); }
+.fl.is-behind .fl__glow { opacity: 0.35; }
+/* a clicked flower's line takes the centre; the statement recedes behind it */
+.field__focus { opacity: 0; filter: blur(10px); }
+.field.is-said .field__text .statement__text:not(.field__focus) { opacity: 0.07; filter: blur(9px); }
+.field.is-said .field__focus { opacity: 1; filter: none; }
+.field.is-said .fl.is-on .fl__say { opacity: 0; }
+.field__hint-b { display: none; }
+.field.is-said .field__hint-a { display: none; }
+.field.is-said .field__hint-b { display: inline; }
+.field.has-focus .field__hint { opacity: 0.45; }
+@media (max-width: 760px) {
+  .field { height: 660px; margin-top: -10px; }
+}
+
 /* ---------- Practice: the pond ---------- */
 .practice { display: block; position: relative; padding-left: 0; padding-right: 0; padding-bottom: clamp(40px, 6vw, 100px); }
 .practice__side { position: absolute; left: var(--pad); z-index: 3; pointer-events: none; }
