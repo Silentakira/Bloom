@@ -752,6 +752,22 @@ html:not(.is-loading) .nav { transform: none; }
 .slot:has(img) { border-style: solid; border-color: rgba(241, 241, 238, 0.1); }
 .slot:has(img)::before { content: none; }
 .study__next { margin-top: 0; }
+
+/* ---------- Small labels: larger and brighter, so they can actually be read ---------- */
+.mono { font-size: 12.5px; letter-spacing: 0.03em; }
+.label { opacity: 0.85; }
+.field__hint, .field.has-focus .field__hint, .pond__hint, .stage__hint, .study__cue { opacity: 0.75; }
+.pond.has-focus .pond__hint { opacity: 0; }
+.case__meta dt, .stage__meta dt, .study__notes dt, .steps__note, .col__n, .case__next .mono { opacity: 0.75; }
+.pond__card ul, .col ul { opacity: 0.8; }
+.pond__card p, .stage__blurb, .bq__blurb, .study__types p { opacity: 0.88; }
+.bouquet.is-open .bq__num { opacity: 0.78; }
+.contact__legal { opacity: 0.68; }
+.nav__clock { opacity: 0.85; }
+.slot::before { opacity: 0.62; }
+.steps li { opacity: 0.85; }
+.steps li span { opacity: 0.75; }
+@keyframes step { 0%, 22% { opacity: 1; } 30%, 100% { opacity: 0.62; } }
 @media (max-width: 760px) {
   .case__body { min-height: 0; }
   .study__row { grid-template-columns: 1fr; gap: 14px; }
