@@ -195,6 +195,7 @@ function fillCase(i) {
   cs.meta.innerHTML = `<dt>Type</dt><dd>${p.client}</dd><dt>Role</dt><dd>${p.role}</dd><dt>Year</dt><dd>${p.year}</dd><dt>Flower</dt><dd>${FLOWER_NAMES[BQ[i].src]}</dd>`;
   showCaseFlower(i, caseEl.classList.contains("is-open") ? 150 : 650);
   cs.nextTitle.textContent = next.title;
+  renderStudy(p);
 }
 function openCase(i, from) {
   clearTimeout(closeTimer);
@@ -237,6 +238,68 @@ addEventListener("keydown", e => {
     f[(idx + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
   }
 });
+
+/* ---------- Case studies ----------
+   A project with a `study` gets a full case study below the first screen of its
+   project view. Images are picked up by file name from assets/work/<slug>/ :
+     type-1.jpg, type-2.jpg, type-3.jpg   the three featured pieces
+     post-01.jpg ... post-09.jpg          the grid
+   A slot with no file yet shows a marked placeholder, so nothing needs editing
+   here when the images arrive: drop the files in and reload. */
+const STUDIES = {
+  Ninho: {
+    slug: "ninho",
+    brief: "A brief I set myself. A small neighbourhood coffee shop wants its Instagram to look like one place, not thirty unrelated posts. One month of content, made so the owner can keep it going without a designer.",
+    idea: "Three kinds of post, one grid, so the feed reads as a single shop window.",
+    typesTitle: "Three kinds of post",
+    types: [
+      { name: "Daily special", note: "One drink, one price, one line. The cup is always seen from above, so every special sits inside the same circle." },
+      { name: "Bean story", note: "Where a coffee comes from, in three short lines on a plain tile. No photo needed, so it can go out on a slow day." },
+      { name: "Opening hours", note: "Posted every Monday. The layout never changes; only the hours do." },
+    ],
+    gridTitle: "The month as a grid",
+    grid: 9,
+    decisions: [
+      { t: "Type", d: "One typeface in two weights. Headlines are large enough to read in the grid view, before a post is opened." },
+      { t: "Colour", d: "Cream, terracotta and coffee brown. Each kind of post owns one background, so you know what it is before you read it." },
+      { t: "Grid", d: "The three kinds rotate in a fixed order. Seen as a profile, the colours fall into diagonal stripes." },
+      { t: "Templates", d: "Every layout is a template with locked margins and one editable text block. A new post takes minutes." },
+    ],
+    next: "Run the templates for a real month, add a story format for the same three kinds of post, and see which kind gets saved most.",
+  },
+};
+const studyEl = document.createElement("div");
+studyEl.className = "study";
+caseEl.append(studyEl);
+const studyCue = document.createElement("p");
+studyCue.className = "study__cue mono";
+studyCue.textContent = "Scroll for the case study ↓";
+$(".case__body").after(studyCue);
+const studyIO = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e.target.classList.add("in")), { root: caseEl, threshold: 0.12 });
+const slot = (file, label, ratio) =>
+  `<figure class="slot" style="aspect-ratio:${ratio}" data-label="${label}"><img src="${file}" alt="${label}" loading="lazy" onerror="this.remove()"></figure>`;
+function renderStudy(p) {
+  const st = STUDIES[p.title];
+  studyCue.hidden = !st;
+  if (!st) { studyEl.innerHTML = ""; return; }
+  const dir = `assets/work/${st.slug}/`, next = projects[(projects.indexOf(p) + 1) % projects.length];
+  studyEl.innerHTML = `
+    <section class="study__row" data-sr><p class="label mono">(01) Brief</p><p class="study__text">${st.brief}</p></section>
+    <section class="study__row" data-sr><p class="label mono">(02) Idea</p><p class="study__big">${st.idea}</p></section>
+    <section data-sr>
+      <p class="label mono">(03) ${st.typesTitle}</p>
+      <div class="study__types">${st.types.map((t, i) => `<article>${slot(`${dir}type-${i + 1}.jpg`, t.name, "4 / 5")}<h3>${t.name}</h3><p>${t.note}</p></article>`).join("")}</div>
+    </section>
+    <section data-sr>
+      <p class="label mono">(04) ${st.gridTitle}</p>
+      <div class="study__grid">${range(st.grid, i => slot(`${dir}post-${pad(i + 1)}.jpg`, `Post ${pad(i + 1)}`, "1 / 1"))}</div>
+    </section>
+    <section class="study__row" data-sr><p class="label mono">(05) Decisions</p><dl class="study__notes">${st.decisions.map(d => `<div><dt class="mono">${d.t}</dt><dd>${d.d}</dd></div>`).join("")}</dl></section>
+    <section class="study__row" data-sr><p class="label mono">(06) Next</p><p class="study__text">${st.next}</p></section>
+    <button class="case__next study__next" data-sr><span class="mono">Next flower</span><strong>${next.title}</strong></button>`;
+  $(".study__next", studyEl).addEventListener("click", () => cs.next.click());
+  $$("[data-sr]", studyEl).forEach(el => (reduce ? el.classList.add("in") : studyIO.observe(el)));
+}
 
 /* ---------- Scroll-scrubbed statement ---------- */
 const scrub = $("[data-scrub]");

@@ -719,3 +719,43 @@ html:not(.is-loading) .nav { transform: none; }
   .stage { display: none; }
   .row__btn { grid-template-columns: 2.2rem 1fr 54px; }
 }
+/* ---------- Case study, below the first screen of a project ---------- */
+.case__body { min-height: calc(100svh - 150px); flex: none; }
+.study__cue { text-align: center; opacity: 0.5; padding: 0 0 22px; }
+.study__cue[hidden] { display: none; }
+.study { width: 100%; max-width: 1280px; margin: 0 auto; padding: clamp(60px, 10vw, 160px) var(--pad) clamp(60px, 8vw, 120px); display: grid; gap: clamp(80px, 12vw, 190px); }
+.study:empty { display: none; }
+.case { overflow-x: hidden; }
+.study > *, .study__row > *, .study__types > *, .study__grid > * { min-width: 0; } /* let grid children shrink on narrow screens */
+.study [data-sr] { opacity: 0; transform: translateY(22px); transition: opacity 1.1s var(--expo), transform 1.1s var(--expo); }
+.study [data-sr].in { opacity: 1; transform: none; }
+.study__row { display: grid; grid-template-columns: 1fr 3fr; gap: var(--pad); align-items: start; }
+.study__text { font-size: clamp(19px, 1.7vw, 27px); line-height: 1.35; letter-spacing: -0.015em; max-width: 30em; text-wrap: pretty; }
+.study__big { font-size: clamp(30px, 4.4vw, 78px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 350; max-width: 15em; text-wrap: balance; }
+.study__types { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(16px, 2.4vw, 40px); margin-top: 22px; }
+.study__types h3 { font-size: clamp(22px, 2vw, 32px); font-weight: 350; letter-spacing: -0.03em; line-height: 1; margin: 20px 0 10px; }
+.study__types p { font-size: 15px; line-height: 1.45; opacity: 0.75; max-width: 28em; text-wrap: pretty; }
+.study__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(6px, 0.8vw, 12px); margin-top: 22px; max-width: 860px; }
+.study__notes { display: grid; }
+.study__notes > div { display: grid; grid-template-columns: 9rem 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid rgba(241, 241, 238, 0.2); }
+.study__notes > div:last-child { border-bottom: 1px solid rgba(241, 241, 238, 0.2); }
+.study__notes dt { opacity: 0.55; padding-top: 3px; }
+.study__notes dd { font-size: clamp(16px, 1.3vw, 20px); line-height: 1.4; max-width: 34em; text-wrap: pretty; }
+/* an image slot: shows the image when its file exists, otherwise a marked placeholder */
+.slot { position: relative; margin: 0; overflow: hidden; background: rgba(241, 241, 238, 0.035); border: 1px dashed rgba(241, 241, 238, 0.22); }
+.slot::before {
+  content: "[ " attr(data-label) " ]\A image to come"; white-space: pre; text-align: center;
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font: 400 11px/1.7 var(--mono); letter-spacing: 0.02em; text-transform: uppercase; opacity: 0.45;
+}
+.slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.slot:has(img) { border-style: solid; border-color: rgba(241, 241, 238, 0.1); }
+.slot:has(img)::before { content: none; }
+.study__next { margin-top: 0; }
+@media (max-width: 760px) {
+  .case__body { min-height: 0; }
+  .study__row { grid-template-columns: 1fr; gap: 14px; }
+  .study__types { grid-template-columns: 1fr; gap: 40px; }
+  .study__notes > div { grid-template-columns: 6.5rem 1fr; }
+}
+
