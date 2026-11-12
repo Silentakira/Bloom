@@ -366,6 +366,7 @@ const FLOWERS = [
   { src: "magnolia",      at: 9, u: 0.5,  v: 0.62, ang: 6,    stem: 1.95, size: 0.75, bend: -0.45 },
   { src: "waterlily",     at: 9, u: 0.5,  v: 0.9,  ang: 30,   stem: 1.35, size: 0.6,  bend: 0.5 },
 ];
+const WHITES = { valley: 0.5 }; // photos where the flower is white on a coloured background
 const CUTS = { chrysanthemum: 0.3 }; // brightness below which a photo's dark background is dropped (default 0.16)
 const RAMP = " .'`,:;-~+=<>i!lI?/|()1{}[]rcvunxzjftLCJUYXZO0Qoahkbdpqwm*WMB8&%$#@";
 const CELL = 3.4; // px per character column
@@ -385,11 +386,12 @@ function loadFlower(src) {
       cv.width = W; cv.height = H;
       const cx = cv.getContext("2d", { willReadFrequently: true });
       cx.drawImage(img, 0, 0, W, H);
-      const id = cx.getImageData(0, 0, W, H), px = id.data, cut = CUTS[src] ?? 0.16;
+      const id = cx.getImageData(0, 0, W, H), px = id.data, cut = CUTS[src] ?? 0.16, white = WHITES[src];
       let x0 = W, y0 = H, x1 = 0, y1 = 0;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const i = (y * W + x) * 4;
-        const a = smooth(Math.max(px[i], px[i + 1], px[i + 2]) / 255, cut, cut + 0.14);
+        // dark-background photos are cut out by brightness; white flowers on a coloured background by whiteness
+        const a = white ? smooth(Math.min(px[i], px[i + 1], px[i + 2]) / 255, white, white + 0.2) : smooth(Math.max(px[i], px[i + 1], px[i + 2]) / 255, cut, cut + 0.14);
         px[i + 3] = a * 255;
         if (a > 0.5) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       }
@@ -461,6 +463,7 @@ function drawFlower(f, g) {
     cx.globalAlpha = cell.a;
     cx.fillText(RAMP[i], cell.c * cw, cell.r * ch);
   }
+  if (f.extra) f.extra(cx, g); // anything a particular flower draws on top of itself
 }
 let stems, stemCtx;
 // characters along a stem's curve; ox/oy move the tip when the blossom is pushed aside
@@ -809,7 +812,7 @@ async function initPlant() {
   const host = $("[data-plant]");
   if (!host || !host.clientWidth) return; // hidden on small screens
   let photo;
-  try { photo = await getPhoto("lotus"); } catch { return; }
+  try { photo = await getPhoto("spider-lily"); } catch { return; }
   const f = (plant = { ...photo, ink: inkNow(), invert: dark, done: false, g: -1, stemRows: -1 });
   f.el = document.createElement("div");
   f.el.className = "plant__bloom";
@@ -827,9 +830,9 @@ async function initPlant() {
   f.stemEl = document.createElement("pre");
   f.stemEl.className = "plant__stem";
   host.append(f.el, f.stemEl);
-  f.w = Math.min(host.clientWidth, 230); f.h = f.w / f.aspect;
+  f.w = Math.min(host.clientWidth, 340); f.h = f.w / f.aspect;
   f.el.style.width = f.w.toFixed(1) + "px"; f.el.style.height = f.h.toFixed(1) + "px";
-  buildGrid(f, clamp(Math.round(f.w / 3.4), 22, 84));
+  buildGrid(f, clamp(Math.round(f.w / 3.2), 22, 116)); // fine enough to hold the thin stamens
   f.canvas.width = Math.round(f.w * dpr); f.canvas.height = Math.round(f.h * dpr);
 }
 function tickPlant() {
@@ -1249,6 +1252,63 @@ function tickCaseFlower(now) {
   if (p >= 1) cf.done = true;
 }
 
+/* ---------- About: red spider lily and lily of the valley ----------
+   The spider lily grows beside the statement as you read (see the plant above).
+   Once it is open it sheds petals that drift across the section and swirl away
+   from the cursor. The lily of the valley stands by the fact sheet and its
+   bells swing when you run down the list. */
+function valleyStem(cx, g) { // the arching stem the bells hang from, drawn over the photo's bells
+  if (g < 0.25) return;
+  const f = this, p0 = [f.w * 0.1, f.h * 0.05], c = [f.w * 0.66, -f.h * 0.04], p1 = [f.w * 0.9, f.h];
+  cx.font = '400 8px "DM Mono", monospace';
+  cx.globalAlpha = 0.5 * clamp((g - 0.25) * 2);
+  for (const p of pathChars(t => { const q = 1 - t; return [q * q * p0[0] + 2 * q * t * c[0] + t * t * p1[0], q * q * p0[1] + 2 * q * t * c[1] + t * t * p1[1]]; }, f.h * 1.1)) cx.fillText(p.ch, p.x, p.y);
+}
+$$(".facts > div").forEach(row => row.addEventListener("mouseenter", () => {
+  const f = colBlooms.find(b => b.extra);
+  if (!f || !f.done) return;
+  if (f.ox === undefined) f.ox = f.oy = f.vx = f.vy = 0;
+  f.vx += 1.5; f.live = true; // the bells swing
+}));
+const petals = { el: $(".statement"), list: [], next: 0, W: 0, H: 0 };
+function initPetals() {
+  if (reduce || !petals.el) return;
+  petals.cv = document.createElement("canvas");
+  petals.cv.className = "petals";
+  petals.cv.setAttribute("aria-hidden", "true");
+  petals.ctx = petals.cv.getContext("2d");
+  petals.el.prepend(petals.cv);
+}
+function tickPetals(now) {
+  if (!petals.cv || !plant) return;
+  const r = petals.el.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > innerHeight) return;
+  if (Math.abs(petals.W - r.width) > 1 || Math.abs(petals.H - r.height) > 1) {
+    petals.W = r.width; petals.H = r.height;
+    petals.cv.width = Math.round(r.width); petals.cv.height = Math.round(r.height);
+  }
+  if (plant.g > 0.75 && now > petals.next && petals.list.length < 26) { // a petal lets go
+    const b = plant.el.getBoundingClientRect();
+    petals.list.push({ x: b.left - r.left + b.width * rand(0.2, 0.8), y: b.top - r.top + b.height * rand(0.25, 0.7), vx: rand(0.15, 0.6), vy: rand(0.25, 0.6), ph: rand(0, 6), ch: "',`~)("[Math.floor(rand(0, 6))], born: now, life: rand(9000, 15000) });
+    petals.next = now + rand(500, 1300);
+  }
+  const cx = petals.ctx, mx = mouse.x - r.left, my = mouse.y - r.top, shy = fine && mouse.moved;
+  cx.clearRect(0, 0, petals.W, petals.H);
+  if (!petals.list.length) return;
+  cx.font = '500 13px "DM Mono", monospace';
+  cx.fillStyle = "#ea5442";
+  petals.list = petals.list.filter(p => {
+    const age = now - p.born;
+    if (age > p.life || p.y > petals.H + 20 || p.x > petals.W + 20) return false;
+    if (shy) { const d = Math.hypot(p.x - mx, p.y - my) || 1; if (d < 90) { p.vx += ((p.x - mx) / d) * 0.08; p.vy += ((p.y - my) / d) * 0.08; } }
+    p.vx = lerp(p.vx, 0.35, 0.01); p.vy = lerp(p.vy, 0.45, 0.01); // a light breeze carries them across and down
+    p.x += p.vx + Math.sin(now / 900 + p.ph) * 0.5; p.y += p.vy + Math.cos(now / 1300 + p.ph) * 0.15;
+    cx.globalAlpha = Math.min(1, age / 800) * Math.min(1, (p.life - age) / 2000) * 0.85;
+    cx.fillText(p.ch, p.x, p.y);
+    return true;
+  });
+}
+
 /* ---------- Practice: the pond ----------
    A tilted plane in real 3D (CSS perspective) is the water surface. The water is
    ASCII drawn on that plane, so it recedes with distance. Three water flowers
@@ -1373,10 +1433,13 @@ function tickPond(now) {
       if (p >= 1) f.done = true;
     }
     // each flower drifts and bobs on the water
-    const x = (f.spec.u + (live ? Math.sin(t * 0.13 + f.phase) * 0.022 : 0)) * pond.W;
-    const y = (f.spec.v + (live ? Math.cos(t * 0.11 + f.phase) * 0.016 : 0)) * pond.H;
+    // two slow waves at different speeds, so the path never visibly repeats
+    const x = (f.spec.u + (live ? Math.sin(t * 0.17 + f.phase) * 0.045 + Math.sin(t * 0.07 + f.phase * 2) * 0.02 : 0)) * pond.W;
+    const y = (f.spec.v + (live ? Math.cos(t * 0.13 + f.phase) * 0.032 + Math.cos(t * 0.05 + f.phase * 3) * 0.014 : 0)) * pond.H;
     f.wx = x; f.wy = y;
-    f.el.style.transform = `translate3d(${(x - f.w / 2).toFixed(1)}px, ${(y - f.h * 0.85).toFixed(1)}px, ${(live ? Math.sin(t * 0.9 + f.phase) * 5 : 0).toFixed(1)}px) rotateZ(${(live ? Math.sin(t * 0.4 + f.phase) * 2 : 0).toFixed(2)}deg)`;
+    const bob = live ? Math.sin(t * 0.9 + f.phase) * 8 : 0, turn = live ? Math.sin(t * 0.33 + f.phase) * 7 : 0;
+    const rock = live ? Math.sin(t * 0.7 + f.phase * 1.7) * 5 : 0, roll = live ? Math.cos(t * 0.55 + f.phase) * 4 : 0; // rocking on the swell
+    f.el.style.transform = `translate3d(${(x - f.w / 2).toFixed(1)}px, ${(y - f.h * 0.85).toFixed(1)}px, ${bob.toFixed(1)}px) rotateZ(${turn.toFixed(2)}deg) rotateX(${rock.toFixed(2)}deg) rotateY(${roll.toFixed(2)}deg)`;
     if (live && f.done && t > f.nextRipple) { addRipple(x, y, 1.1); f.nextRipple = t + 2.2 + rand(0, 1.2); }
   }
   if (pond.focus >= 0) { // the text sits beside the lifted flower
@@ -1402,6 +1465,7 @@ async function initColBlooms() {
     let photo;
     try { photo = await getPhoto(host.dataset.bloom); } catch { continue; }
     const f = { ...photo, ink: inkNow(), invert: dark, done: false, t0: Infinity };
+    if (host.dataset.bloom === "valley") f.extra = valleyStem;
     f.el = document.createElement("div");
     f.el.className = "col__flower";
     const sway = document.createElement("div");
@@ -1459,6 +1523,7 @@ function frame(now) {
   tickBees(now);
   tickCaseFlower(now);
   tickPond(now);
+  tickPetals(now);
 
   if (!reduce) {
     // hero drifts away slower than the page
@@ -1503,6 +1568,7 @@ function start() {
   initColBlooms();
   initBouquet();
   initPond();
+  initPetals();
   root.classList.remove("is-loading");
   $$("[data-reveal], [data-kinetic], [data-rows]").forEach(el => io.observe(el));
   requestAnimationFrame(frame);

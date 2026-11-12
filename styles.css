@@ -505,6 +505,22 @@ html:not(.is-loading) .nav { transform: none; }
   .case__meta dt:nth-of-type(n + 3) { margin-top: 10px; }
 }
 
+/* ---------- About: spider lily, lily of the valley, falling petals ---------- */
+.statement { position: relative; }
+.petals { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+.plant { width: 100%; max-width: 340px; min-height: 560px; }
+.facts-wrap { display: grid; grid-template-columns: minmax(0, 46rem) auto; gap: clamp(20px, 4vw, 70px); align-items: end; margin-top: clamp(48px, 7vw, 120px); }
+.facts-wrap .facts { margin-top: 0; }
+.valley { position: relative; width: 200px; padding-bottom: 92px; }
+.valley .col__bloom { width: 200px; height: 300px; margin: 0; }
+.valley__stem { position: absolute; left: 80%; bottom: 0; margin: 0; font: 400 10px/1 var(--mono); color: var(--fg); opacity: 0.45; white-space: pre; }
+@media (max-width: 760px) {
+  .facts-wrap { grid-template-columns: 1fr; }
+  .statement .statement__side .plant { display: flex; max-width: 250px; min-height: 380px; margin: 8px auto 0; } /* the spider lily shows on phones too */
+  .valley { justify-self: end; width: 150px; padding-bottom: 60px; }
+  .valley .col__bloom { width: 150px; height: 225px; }
+}
+
 /* ---------- Practice: the pond ---------- */
 .practice { display: block; position: relative; padding-left: 0; padding-right: 0; padding-bottom: clamp(40px, 6vw, 100px); }
 .practice__side { position: absolute; left: var(--pad); z-index: 3; pointer-events: none; }
