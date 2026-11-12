@@ -775,3 +775,9 @@ html:not(.is-loading) .nav { transform: none; }
   .study__notes > div { grid-template-columns: 6.5rem 1fr; }
 }
 
+
+/* ---------- Hints keep clear of the screen edges ---------- */
+.field__hint, .pond__hint { padding: 0 var(--pad); text-wrap: balance; }
+@media (max-width: 760px) {
+  .field__hint, .pond__hint { padding: 0 28px; line-height: 1.6; }
+}

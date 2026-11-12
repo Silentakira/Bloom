@@ -429,6 +429,21 @@ const FLOWERS = [
   { src: "magnolia",      at: 9, u: 0.5,  v: 0.62, ang: 6,    stem: 1.95, size: 0.75, bend: -0.45 },
   { src: "waterlily",     at: 9, u: 0.5,  v: 0.9,  ang: 30,   stem: 1.35, size: 0.6,  bend: 0.5 },
 ];
+// Phones: the name stacks as two words. Flowers come out of the top of the first word,
+// the bottom of the second, and short ones out of both sides, all kept inside the screen.
+const FLOWERS_SMALL = [
+  { src: "waterlily",     at: 0, u: 0.5,  ang: -112, stem: 0.35, size: 1.0,  bend: 0.6 },
+  { src: "chrysanthemum", at: 1, u: 0.16, ang: -90,  stem: 0.95, size: 0.72, bend: -0.5 },
+  { src: "violet-lily",   at: 3, u: 0.3,  ang: -68,  stem: 0.5,  size: 0.88, bend: 0.5 },
+  { src: "dahlia",        at: 4, u: 0.6,  ang: -52,  stem: 0.9,  size: 0.78, bend: -0.6 },
+  { src: "magnolia",      at: 5, u: 0.5,  ang: 114,  stem: 0.45, size: 0.9,  bend: -0.5 },
+  { src: "lotus",         at: 7, u: 0.5,  ang: 90,   stem: 0.95, size: 0.7,  bend: 0.5 },
+  { src: "waterlily",     at: 9, u: 0.5,  ang: 62,   stem: 0.5,  size: 0.84, bend: -0.6 },
+  { src: "violet-lily",   at: 0, u: 0.1,  v: 0.9,  ang: 178, stem: 0.38, size: 0.56, bend: 0.4 },
+  { src: "magnolia",      at: 4, u: 0.9,  v: 0.55, ang: -6,  stem: 0.38, size: 0.54, bend: 0.4 },
+  { src: "lotus",         at: 5, u: 0.14, v: 0.45, ang: 172, stem: 0.38, size: 0.54, bend: -0.4 },
+  { src: "dahlia",        at: 9, u: 0.5,  v: 0.4,  ang: -8,  stem: 0.4,  size: 0.6,  bend: -0.4 },
+];
 const WHITES = { valley: 0.5, "white-lily": 0.52 }; // photos where the flower is white on a coloured background
 const CUTS = { chrysanthemum: 0.3 }; // brightness below which a photo's dark background is dropped (default 0.16)
 const RAMP = " .'`,:;-~+=<>i!lI?/|()1{}[]rcvunxzjftLCJUYXZO0Qoahkbdpqwm*WMB8&%$#@";
@@ -598,7 +613,7 @@ async function initGarden() {
   measureInk();
   const photos = {};
   try {
-    await Promise.all([...new Set(FLOWERS.map(s => s.src))].map(async src => (photos[src] = await getPhoto(src))));
+    await Promise.all([...new Set([...FLOWERS, ...FLOWERS_SMALL].map(s => s.src))].map(async src => (photos[src] = await getPhoto(src))));
     await document.fonts.load('400 10px "DM Mono"');
   } catch { return; } // photos missing: the hero simply stays plain
   garden = document.createElement("div");
@@ -609,7 +624,7 @@ async function initGarden() {
   stems.className = "garden__stems";
   stemCtx = stems.getContext("2d");
   garden.append(stems);
-  const specs = innerWidth < 760 ? FLOWERS.filter(s => s.v === undefined).filter((_, i) => i % 2 === 0) : FLOWERS; // fewer on small screens, none out of the sides
+  const specs = innerWidth < 760 ? FLOWERS_SMALL : FLOWERS;
   specs.forEach(spec => {
     const f = { ...photos[spec.src], spec, done: false, ink: inkNow(), invert: dark };
     f.el = document.createElement("div");
@@ -1127,13 +1142,19 @@ async function initBouquet() {
     f.num = document.createElement("span");
     f.num.className = "bq__num mono";
     f.num.textContent = pad(i + 1);
-    f.el.addEventListener("mouseenter", () => setActive(i));
-    // with a mouse a click opens the project; on touch the first tap selects, the second opens
-    f.el.addEventListener("click", () => (!fine && active !== i ? setActive(i) : openCase(i, rowEls[i].querySelector("button"))));
+    if (fine) f.el.addEventListener("mouseenter", () => setActive(i));
+    // with a mouse, hovering previews and a click opens. On touch the first tap previews
+    // (a tap also fires a hover, which used to count as the preview and open at once);
+    // a second tap on the same flower opens it.
+    f.el.addEventListener("click", () => {
+      if (fine || bq.armed === i) { bq.armed = -1; openCase(i, rowEls[i].querySelector("button")); }
+      else { bq.armed = i; setActive(i); }
+    });
     bq.el.append(f.el, f.num);
     bq.flowers.push(f);
   });
   bq.el.append(bq.bow);
+  if (!fine) { const hint = $(".bq__note .stage__hint"); if (hint) hint.textContent = "Tap a flower to preview it. Tap it again to open."; }
   // leaving the bouquet puts it back together: nothing selected, nothing dimmed
   if (fine) bq.el.addEventListener("mouseleave", () => { active = -1; rowEls.forEach(r => r.classList.remove("is-active")); markBouquet(); });
   sizeBouquet();
