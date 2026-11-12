@@ -23,14 +23,9 @@ const projects = [
     poster: svg("#0f0f10", `${range(7, i => `<circle cx="150" cy="410" r="${50 + i * 52}" fill="none" stroke="#d7ff3a" stroke-width="${16 - i * 2}"/>`)}${cap("#d7ff3a", "NOCTURNE TYPE FESTIVAL", "03 NIGHTS — 2026")}`),
   },
   {
-    title: "Slow Atlas", kind: "Book design", year: "2025", client: "Field Press", role: "Editorial design",
-    blurb: "A 320-page atlas of walking routes, set on a grid that follows the pace of the walk. Long lines for flat ground, short ones where the path climbs.",
-    poster: svg("#2440ff", `${[230, 180, 250, 120, 210, 90, 240, 160, 200, 60, 220, 140].map((w, i) => `<rect x="20" y="${70 + i * 23}" width="${w}" height="7" fill="#f1f1ee"/>`).join("")}${cap("#f1f1ee", "SLOW ATLAS", "FIELD PRESS — 2025")}`),
-  },
-  {
-    title: "Tidewater", kind: "Wayfinding", year: "2025", client: "Tidewater Transit", role: "Signage system",
-    blurb: "Signage for a harbour ferry network. Arrows drawn on the same angle as the tide tables, readable from a moving deck in bad weather.",
-    poster: svg("#f3f2ec", `<rect y="200" width="300" height="200" fill="#ffc400"/><path d="M62 338 L226 174 M112 174 H226 V288" stroke="#111" stroke-width="36" fill="none"/>${cap("#111", "TIDEWATER TRANSIT", "WAYFINDING — 2025")}`),
+    title: "Ninho", kind: "Social media", year: "2026", client: "Ninho Coffee", role: "Instagram posts, templates",
+    blurb: "A month of Instagram posts for a neighbourhood coffee shop. One grid and three kinds of post: the daily special, the story behind a bean, and the week's opening hours.",
+    poster: svg("#2a1a12", `${range(9, i => { const x = 24 + (i % 3) * 88, y = 78 + Math.floor(i / 3) * 88, fill = ["#efe2cf", "#c8623a", "#3d2619"][(i * 2) % 3], ink = fill === "#efe2cf" ? "#2a1a12" : "#efe2cf"; return `<rect x="${x}" y="${y}" width="76" height="76" rx="6" fill="${fill}"/>` + (i % 3 === 0 ? `<circle cx="${x + 38}" cy="${y + 38}" r="19" fill="none" stroke="${ink}" stroke-width="5"/><circle cx="${x + 38}" cy="${y + 38}" r="8" fill="${ink}"/>` : i % 3 === 1 ? `<rect x="${x + 14}" y="${y + 22}" width="48" height="6" fill="${ink}"/><rect x="${x + 14}" y="${y + 36}" width="34" height="6" fill="${ink}"/><rect x="${x + 14}" y="${y + 50}" width="42" height="6" fill="${ink}"/>` : `<path d="M${x + 18} ${y + 54} Q${x + 38} ${y + 10} ${x + 58} ${y + 54}" fill="none" stroke="${ink}" stroke-width="5"/>`); })}${cap("#efe2cf", "NINHO COFFEE", "INSTAGRAM — 2026")}`),
   },
   {
     title: "Paper Weather", kind: "Publication", year: "2024", client: "Self-initiated", role: "Design, writing, print",
@@ -940,19 +935,18 @@ function tickScramble(now) {
    fans open, and the blossoms open from the middle outward.
    ang: how far each stem leans from vertical, len: stem length, size: blossom size. */
 const BQ = [
-  { src: "magnolia",      ang: -47, len: 0.4,  size: 0.95 },
-  { src: "dahlia",        ang: -29, len: 0.55, size: 1.05 },
-  { src: "violet-lily",   ang: -10, len: 0.44, size: 1.0 },
-  { src: "waterlily",     ang: 9,   len: 0.6,  size: 1.12 },
-  { src: "chrysanthemum", ang: 28,  len: 0.42, size: 0.95 },
-  { src: "lotus",         ang: 46,  len: 0.52, size: 0.9 },
+  { src: "magnolia",    ang: -45, len: 0.42, size: 0.98 },
+  { src: "dahlia",      ang: -23, len: 0.57, size: 1.05 },
+  { src: "waterlily",   ang: 0,   len: 0.64, size: 1.14 },
+  { src: "violet-lily", ang: 23,  len: 0.5,  size: 1.0 },
+  { src: "lotus",       ang: 45,  len: 0.55, size: 0.92 },
 ];
 // thin filler stems topped with a scatter of small characters, like baby's breath
-const BQ_SPRIGS = [{ ang: -38, len: 0.56 }, { ang: -19, len: 0.34 }, { ang: 0, len: 0.68 }, { ang: 19, len: 0.33 }, { ang: 38, len: 0.64 }].map(s => ({
+const BQ_SPRIGS = [{ ang: -34, len: 0.6 }, { ang: -11, len: 0.38 }, { ang: 12, len: 0.72 }, { ang: 34, len: 0.4 }].map(s => ({
   ...s, dots: Array.from({ length: 10 }, () => ({ x: rand(-17, 17), y: rand(-20, 10), ch: "*.o'*"[Math.floor(Math.random() * 5)] })),
 }));
 const BOW = [" .--.   .--. ", "(    \\ /    )", " '--. X .--' ", "    /   \\    ", "   /     \\   "].join("\n");
-const BQ_ORDER = [2, 3, 1, 4, 0, 5]; // blossoms open from the middle outward
+const BQ_ORDER = [2, 1, 3, 0, 4]; // blossoms open from the middle outward
 const bq = { el: $("[data-bouquet]"), flowers: [], sprigs: [], t0: Infinity, ready: false, done: false, spread: 0, grow: 0 };
 const backOut = t => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2); // eases past the target and settles
 
