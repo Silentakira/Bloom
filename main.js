@@ -1252,6 +1252,126 @@ function tickCaseFlower(now) {
   if (p >= 1) cf.done = true;
 }
 
+/* ---------- About: a field of red spider lilies ----------
+   A ground plane tilted in real 3D carries rows of red spider lilies standing
+   upright on their stalks, swaying, with the far rows fading into the distance.
+   A few white lily of the valley sprigs stand among the red. Those are the ones
+   that carry the facts: point at one and it says its line.
+   FIELD_SAYS: one line per white flower. */
+const FIELD_SAYS = ["one year in", "six months at Boutik Studio", "studied multimedia design", "Portugal, working remotely"];
+const FIELD_TILT = 64;
+const field = { el: $("[data-field]"), fls: [], ready: false, visible: false, open: false, rx: 0, rz: 0, frame: 0 };
+// one flower drawn once, then copied to every canvas in the field
+function masterFlower(photo, size, ink) {
+  const f = { ...photo, ink, invert: true };
+  f.w = size * Math.sqrt(f.aspect); f.h = size / Math.sqrt(f.aspect);
+  f.canvas = document.createElement("canvas");
+  f.canvas.width = Math.round(f.w * dpr); f.canvas.height = Math.round(f.h * dpr);
+  f.ctx = f.canvas.getContext("2d");
+  buildGrid(f, clamp(Math.round(f.w / 3.1), 22, 110));
+  drawFlower(f, 1);
+  return f;
+}
+function sayFlower(fl) {
+  field.el.classList.toggle("has-focus", !!fl);
+  field.fls.forEach(f => f.el.classList.toggle("is-on", f === fl));
+}
+function sizeField() {
+  if (!field.plane) return;
+  const W = (field.W = field.plane.offsetWidth), H = (field.H = field.plane.offsetHeight);
+  for (const f of field.fls) { f.x = f.u * W; f.y = f.v * H; f.h = f.el.offsetHeight; }
+  // the ground: a scatter of small marks that thins toward the edges, so the plane reads as a surface
+  const cv = field.ground, cx = cv.getContext("2d");
+  cv.width = W; cv.height = H;
+  cx.font = '500 13px "DM Mono", monospace';
+  cx.fillStyle = "#f1f1ee";
+  for (let i = 0; i < 1300; i++) {
+    const x = Math.random() * W, y = Math.random() * H, ex = (x - W / 2) / (W / 2), ey = (y - H / 2) / (H / 2), e = ex * ex + ey * ey;
+    if (e > 1) continue;
+    cx.globalAlpha = (1 - e) * 0.34;
+    cx.fillText(",.'`\"".charAt(Math.floor(Math.random() * 5)), x, y);
+  }
+}
+async function initField() {
+  if (!field.el) return;
+  let red, white;
+  try { [red, white] = await Promise.all([getPhoto("spider-lily"), getPhoto("valley")]); } catch { return; }
+  field.plane = $(".field__plane", field.el);
+  field.ground = $(".field__ground", field.el);
+  const small = innerWidth < 760, S = small ? 112 : 178;
+  const mr = masterFlower(red, S, "#ff9c8a"), mw = masterFlower(white, S * 0.8, "#f6f6f1");
+  // rows from far to near; [row, column] of the white flowers
+  const rows = small ? [3, 3, 4, 4] : [5, 6, 6, 6, 5];
+  const says = small ? [[1, 1], [2, 0], [2, 3], [3, 2]] : [[2, 1], [2, 4], [3, 2], [4, 3]];
+  let sayI = 0;
+  rows.forEach((n, r) => {
+    for (let c = 0; c < n; c++) {
+      const depth = r / (rows.length - 1);
+      const v = 0.2 + depth * 0.62 + rand(-0.03, 0.03);
+      const u = ((c + 0.5 + rand(-0.3, 0.3)) / n) * (small ? 0.66 : 0.86) + (small ? 0.17 : 0.07); // kept further from the edges on phones
+      const telling = says.some(([a, b]) => a === r && b === c), m = telling ? mw : mr;
+      const el = document.createElement(telling ? "button" : "div");
+      el.className = "fl" + (telling ? " fl--say" : "") + (u < 0.5 ? " fl--l" : " fl--r");
+      const stemRows = Math.round(telling ? rand(4, 7) : rand(9, 16));
+      el.innerHTML = '<span class="fl__glow"></span><canvas class="fl__head"></canvas><pre class="fl__stem">' + Array(stemRows).fill("|").join("\n") + "</pre>";
+      const cv = el.querySelector("canvas");
+      cv.width = m.canvas.width; cv.height = m.canvas.height;
+      cv.style.width = m.w.toFixed(1) + "px"; cv.style.height = m.h.toFixed(1) + "px";
+      cv.getContext("2d").drawImage(m.canvas, 0, 0);
+      el.style.setProperty("--d", (r * 0.2 + rand(0, 0.3)).toFixed(2) + "s"); // far rows come up first
+      el.style.setProperty("--fade", (0.38 + 0.62 * depth).toFixed(2));        // and stay fainter
+      const fl = { el, u, v, telling, w: m.w, phase: rand(0, 6), ga: 0, gv: 0, sx: -9999, sy: -9999 };
+      if (telling) {
+        const line = FIELD_SAYS[sayI++];
+        const say = document.createElement("span");
+        say.className = "fl__say";
+        say.textContent = line;
+        el.append(say);
+        el.setAttribute("aria-label", line);
+        el.dataset.cursor = "link";
+        el.addEventListener("mouseenter", () => sayFlower(fl));
+        el.addEventListener("mouseleave", () => sayFlower(null));
+        el.addEventListener("focus", () => sayFlower(fl));
+        el.addEventListener("blur", () => sayFlower(null));
+        el.addEventListener("click", () => { if (!fine) sayFlower(el.classList.contains("is-on") ? null : fl); });
+      } else el.setAttribute("aria-hidden", "true");
+      field.plane.append(el);
+      field.fls.push(fl);
+    }
+  });
+  sizeField();
+  field.ready = true;
+  new IntersectionObserver(([e]) => {
+    field.visible = e.isIntersecting;
+    if (e.isIntersecting && !field.el.classList.contains("is-open")) {
+      field.el.classList.add("is-open");
+      setTimeout(() => (field.open = true), reduce ? 0 : 2600);
+    }
+  }, { threshold: 0.15 }).observe(field.el);
+}
+function tickField(now) {
+  if (!field.ready || !field.visible) return;
+  const t = now / 1000, r = field.el.getBoundingClientRect(), live = !reduce;
+  const lean = live && fine && mouse.moved;
+  const mxn = clamp((mouse.x - r.left) / r.width) - 0.5, myn = clamp((mouse.y - r.top) / r.height) - 0.5;
+  field.rx = lerp(field.rx, lean ? -myn * 5 : 0, 0.04); field.rz = lerp(field.rz, lean ? -mxn * 5 : 0, 0.04);
+  field.plane.style.setProperty("--rx", field.rx.toFixed(2) + "deg");
+  field.plane.style.setProperty("--rz", field.rz.toFixed(2) + "deg");
+  const measure = field.frame++ % 30 === 0; // where each flower is on screen, refreshed twice a second
+  const gust = lean && brushV.s > 0.4;
+  for (const f of field.fls) {
+    if (measure) { const b = f.el.getBoundingClientRect(); f.sx = b.left + b.width / 2; f.sy = b.top + b.height * 0.25; }
+    if (gust) { // the cursor passing is a gust of wind
+      const dx = Math.abs(mouse.x - f.sx), dy = Math.abs(mouse.y - f.sy);
+      if (dx < 150 && dy < 190) f.gv += clamp(brushV.x, -25, 25) * 0.045 * (1 - dx / 150);
+    }
+    f.gv = (f.gv - 0.035 * f.ga) * 0.93;
+    f.ga = clamp(f.ga + f.gv, -24, 24);
+    const sway = live ? Math.sin(t * 0.9 + f.phase) * 2.6 + Math.sin(t * 0.37 + f.phase * 2) * 1.6 + f.ga : 0;
+    f.el.style.transform = `translate3d(${(f.x - f.w / 2).toFixed(1)}px, ${(f.y - f.h).toFixed(1)}px, 0) rotateX(${-FIELD_TILT}deg) rotateZ(${sway.toFixed(2)}deg)`;
+  }
+}
+
 /* ---------- About: red spider lily and lily of the valley ----------
    The spider lily grows beside the statement as you read (see the plant above).
    Once it is open it sheds petals that drift across the section and swirl away
@@ -1280,17 +1400,17 @@ function initPetals() {
   petals.el.prepend(petals.cv);
 }
 function tickPetals(now) {
-  if (!petals.cv || !plant) return;
+  if (!petals.cv || !field.open) return;
   const r = petals.el.getBoundingClientRect();
   if (r.bottom < 0 || r.top > innerHeight) return;
   if (Math.abs(petals.W - r.width) > 1 || Math.abs(petals.H - r.height) > 1) {
     petals.W = r.width; petals.H = r.height;
     petals.cv.width = Math.round(r.width); petals.cv.height = Math.round(r.height);
   }
-  if (plant.g > 0.75 && now > petals.next && petals.list.length < 26) { // a petal lets go
-    const b = plant.el.getBoundingClientRect();
-    petals.list.push({ x: b.left - r.left + b.width * rand(0.2, 0.8), y: b.top - r.top + b.height * rand(0.25, 0.7), vx: rand(0.15, 0.6), vy: rand(0.25, 0.6), ph: rand(0, 6), ch: "',`~)("[Math.floor(rand(0, 6))], born: now, life: rand(9000, 15000) });
-    petals.next = now + rand(500, 1300);
+  if (now > petals.next && petals.list.length < 26) { // a petal lets go of one of the red flowers
+    const reds = field.fls.filter(f => !f.telling && f.sx > -999), src = reds[Math.floor(Math.random() * reds.length)];
+    if (src) petals.list.push({ x: src.sx - r.left + rand(-24, 24), y: src.sy - r.top + rand(-16, 16), vx: rand(0.15, 0.6), vy: rand(0.25, 0.6), ph: rand(0, 6), ch: "',`~)("[Math.floor(rand(0, 6))], born: now, life: rand(9000, 15000) });
+    petals.next = now + rand(600, 1500);
   }
   const cx = petals.ctx, mx = mouse.x - r.left, my = mouse.y - r.top, shy = fine && mouse.moved;
   cx.clearRect(0, 0, petals.W, petals.H);
@@ -1523,6 +1643,7 @@ function frame(now) {
   tickBees(now);
   tickCaseFlower(now);
   tickPond(now);
+  tickField(now);
   tickPetals(now);
 
   if (!reduce) {
@@ -1569,6 +1690,7 @@ function start() {
   initBouquet();
   initPond();
   initPetals();
+  initField();
   root.classList.remove("is-loading");
   $$("[data-reveal], [data-kinetic], [data-rows]").forEach(el => io.observe(el));
   requestAnimationFrame(frame);
@@ -1598,5 +1720,5 @@ function start() {
   })(t0);
 })();
 
-addEventListener("resize", () => { fit(); half = 0; if (garden) { measureInk(); placeGarden(); } placeSolo(); lockWords(); sizeBouquet(); if (bq.done) layoutBouquet(1, 1); sizePond(); });
+addEventListener("resize", () => { fit(); half = 0; if (garden) { measureInk(); placeGarden(); } placeSolo(); lockWords(); sizeBouquet(); if (bq.done) layoutBouquet(1, 1); sizePond(); sizeField(); });
 
