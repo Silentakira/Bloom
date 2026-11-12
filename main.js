@@ -368,7 +368,7 @@ const FLOWERS = [
   { src: "magnolia",      at: 9, u: 0.5,  v: 0.62, ang: 6,    stem: 1.95, size: 0.75, bend: -0.45 },
   { src: "waterlily",     at: 9, u: 0.5,  v: 0.9,  ang: 30,   stem: 1.35, size: 0.6,  bend: 0.5 },
 ];
-const WHITES = { valley: 0.5 }; // photos where the flower is white on a coloured background
+const WHITES = { valley: 0.5, "white-lily": 0.52 }; // photos where the flower is white on a coloured background
 const CUTS = { chrysanthemum: 0.3 }; // brightness below which a photo's dark background is dropped (default 0.16)
 const RAMP = " .'`,:;-~+=<>i!lI?/|()1{}[]rcvunxzjftLCJUYXZO0Qoahkbdpqwm*WMB8&%$#@";
 const CELL = 3.4; // px per character column
@@ -1257,7 +1257,7 @@ function tickCaseFlower(now) {
 /* ---------- About: a field of red spider lilies ----------
    A ground plane tilted in real 3D carries rows of red spider lilies standing
    upright on their stalks, swaying, with the far rows fading into the distance.
-   A few white lily of the valley sprigs stand among the red. Those are the ones
+   A few white lilies stand among the red. Those are the ones
    that carry the facts: point at one and it says its line.
    FIELD_SAYS: one line per white flower. */
 // short: the whisper beside the flower on hover. full: the line that takes over the centre when you click it.
@@ -1313,13 +1313,13 @@ function sizeField() {
 async function initField() {
   if (!field.el) return;
   let red, white;
-  try { [red, white] = await Promise.all([getPhoto("spider-lily"), getPhoto("valley")]); } catch { return; }
+  try { [red, white] = await Promise.all([getPhoto("spider-lily"), getPhoto("white-lily")]); } catch { return; }
   field.plane = $(".field__plane", field.el);
   field.ground = $(".field__ground", field.el);
   field.text = $(".field__text", field.el);
   field.focusText = $(".field__focus", field.el);
   const small = innerWidth < 760, S = small ? 112 : 178;
-  const mr = masterFlower(red, S, "#ff9c8a"), mw = masterFlower(white, S * 0.8, "#f6f6f1");
+  const mr = masterFlower(red, S, "#ff9c8a"), mw = masterFlower(white, S * 0.92, "#f6f6f1");
   // rows from far to near; [row, column] of the white flowers
   const rows = small ? [4, 5, 5, 5] : [8, 9, 10, 10, 9];
   const says = small ? [[1, 0], [2, 4], [3, 1], [3, 3]] : [[2, 1], [2, 8], [4, 2], [4, 6]]; // out at the sides and the front, clear of the text

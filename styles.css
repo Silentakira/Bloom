@@ -559,7 +559,9 @@ html:not(.is-loading) .nav { transform: none; }
   opacity: 0; transition: opacity 2.2s ease var(--d, 0s); pointer-events: none;
 }
 .field.is-open .fl__glow { opacity: 1; }
-.fl--say { cursor: pointer; }
+.fl { pointer-events: none; } /* red flowers in front must not swallow clicks meant for a white one behind them */
+.fl--say { cursor: pointer; pointer-events: auto; }
+.fl--say::before { content: ""; position: absolute; inset: -14px -18px 0; } /* the whole blossom and stalk, plus a margin */
 .fl--say:focus-visible { outline: none; }
 .fl--say .fl__glow { background: radial-gradient(closest-side, rgba(244, 244, 226, 0.13), transparent); }
 .fl__say {
