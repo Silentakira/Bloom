@@ -719,17 +719,3 @@ html:not(.is-loading) .nav { transform: none; }
   .stage { display: none; }
   .row__btn { grid-template-columns: 2.2rem 1fr 54px; }
 }
-
-/* ---------- Performance ---------- */
-/* sections that are off screen stop their CSS animations */
-.is-off .bloom__sway, .is-off .arrow, .is-off .steps li { animation-play-state: paused; }
-/* reduced: flowers stop idly swaying (they still react to the cursor) */
-:root[data-q="1"] .bloom__sway, :root[data-q="0"] .bloom__sway { animation: none; }
-/* minimal: drop the blurred glows and the blur-based focus effects, which cost the most to draw */
-:root[data-q="0"] .bloom__glow { display: none; }
-:root[data-q="0"] .fl.is-behind .fl__head,
-:root[data-q="0"] .pond .lily__tilt,
-:root[data-q="0"] .pond__card,
-:root[data-q="0"] .fl__say,
-:root[data-q="0"] .field__text .statement__text { filter: none !important; }
-:root[data-q="0"] .fl__glow { width: 100%; }
