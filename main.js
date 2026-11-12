@@ -256,7 +256,9 @@ words.forEach((w, i) => scrub.append(w, i < words.length - 1 ? " " : ""));
 let litCount = -1;
 function tickScrub() {
   const r = scrub.getBoundingClientRect();
-  const p = clamp((innerHeight * 0.82 - r.top) / (r.height + innerHeight * 0.3));
+  // starts as the paragraph enters at the bottom of the screen and is fully lit while it is
+  // still in the lower third, well before it reaches the middle
+  const p = clamp((innerHeight * 0.98 - r.top) / (r.height + innerHeight * 0.3));
   scrubP = p;
   const lit = Math.round(p * words.length);
   if (lit === litCount) return;
